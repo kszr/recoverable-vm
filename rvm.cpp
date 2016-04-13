@@ -1,13 +1,33 @@
 #include"rvm.h"
+#include <unistd.h>
+#include <stdio.h>
+#include <string>
+#include <stdlib.h>
+#include <vector>
 
+static rvm_t g_id = 0;
+static std::vector<rvm> map_thing;
 /*
   Initialize the library with the specified directory as backing store.
 */
 rvm_t rvm_init(const char *directory){
-
+    //rvm *rvm_obj = (rvm *) malloc(sizeof(rvm));
+    rvm rvm_obj;
+    char *s = strcat("mkdir ", directory);
+    int i = system(s);
+    if(i<0)
+        ; // Throw error
+    rvm_obj.dir_path = s; // <== TODO: full path
+    rvm_obj.id = g_id++;
+    map_thing.push_back(rvm_obj);
+    return rvm_obj.id;
 }
+
 /*
-  map a segment from disk into memory. If the segment does not already exist, then create it and give it size size_to_create. If the segment exists but is shorter than size_to_create, then extend it until it is long enough. It is an error to try to map the same segment twice.
+  map a segment from disk into memory. If the segment does not already exist,
+  then create it and give it size size_to_create. If the segment exists but 
+  is shorter than size_to_create, then extend it until it is long enough.
+  It is an error to try to map the same segment twice.
 */
 void *rvm_map(rvm_t rvm, const char *segname, int size_to_create){
 

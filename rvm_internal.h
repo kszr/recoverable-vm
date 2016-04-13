@@ -4,8 +4,8 @@ typedef int trans_t;
 typedef int rvm_t;
 
 typedef struct rvm {
-	const char* directory path;
-	
+	const char* dir_path;
+    rvm_t id;
 };
 
 typedef struct undo_log{
