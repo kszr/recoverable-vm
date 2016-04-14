@@ -9,8 +9,8 @@
 
 static rvm_t g_id = 0;
 static std::vector<rvm> rvm_vector;
-static std::map<char*, segment> seg_map;
-static std::map<char*, segment>::iterator itr;
+static std::map<const char*, segment> seg_map;
+static std::map<const char*, segment>::iterator itr;
 
 /*
   Initialize the library with the specified directory as backing store.
@@ -46,12 +46,13 @@ void *rvm_map(rvm_t rvm, const char *segname, int size_to_create){
 	segment sgt;
 	//compare segname with segnames data structure
 	itr = seg_map.find(segname);
-	if (itr != mymap.end()) {
-			sgt.segaddr = (char*) realloc (segname, size_to_create);
+	if (itr != seg_map.end() && sgt.ismapped == 1) {
+			sgt.segaddr = (char*) realloc ((char*)segname, size_to_create);
 			seg_map.erase (itr);
 			seg_map [segname] = sgt;
 	} else {
 		sgt.segaddr = (char *) malloc(size_to_create);
+		sgt.ismapped = 1;
 		seg_map [segname] = sgt;
 		}
 	return sgt.segaddr;
@@ -61,7 +62,17 @@ void *rvm_map(rvm_t rvm, const char *segname, int size_to_create){
   unmap a segment from memory.
 */
 void rvm_unmap(rvm_t rvm, void *segbase){
+	int found = 0;
 	itr = seg_map.begin();
+	while(itr != seg_map.end()) {
+		found = ((long) itr-> second.segaddr == (long) segbase);
+		if(found) {
+			itr-> second.ismapped = 0;
+			break;
+		}
+		itr++;
+	}
+	
 }
 
 /*
@@ -76,7 +87,7 @@ void rvm_destroy(rvm_t rvm, const char *segname){
  */
 trans_t rvm_begin_trans(rvm_t rvm, int numsegs, void **segbases){
 
-
+	return 1;
 }
 
 /*
