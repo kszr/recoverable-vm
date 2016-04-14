@@ -6,10 +6,10 @@ typedef struct rvm_s {
     rvm_t id;
 } rvm;
 
-typedef struct segment {
+typedef struct segment_s {
 	const char* segaddr;
 	bool kill;
-};
+} segment;
 	
 typedef struct undo_log{
 	const char* segname;
