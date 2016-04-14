@@ -9,6 +9,7 @@ typedef int rvm_t;
 struct segment {
 	char* segaddr;
 	bool ismapped;
+	bool busy;
 };
 	
 struct undo_log{
