@@ -8,9 +8,7 @@ AR      = ar rc
 RANLIB  = ranlib
 
 LIBRARY = librvm.a
-
 LIB_SRC = rvm.cpp
-
 LIB_OBJ = $(patsubst %.cpp,%.o,$(LIB_SRC))
 
 %.o: %.cpp
