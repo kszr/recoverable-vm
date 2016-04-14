@@ -57,7 +57,7 @@ void *rvm_map(rvm_t rvm, const char *segname, int size_to_create){
 		sgt.segaddr = (char *) malloc(size_to_create);
 		sgt.ismapped = 1;
 		seg_map [segname] = sgt;
-		}
+	}
 	return (void *) sgt.segaddr;
 }
 
