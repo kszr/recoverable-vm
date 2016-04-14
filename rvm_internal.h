@@ -5,9 +5,14 @@ typedef int rvm_t;
 
 typedef struct rvm {
 	const char* dir_path;
-    rvm_t id;
+    	rvm_t id;
 };
 
+typedef struct segment {
+	const char* segaddr;
+	bool kill;
+};
+	
 typedef struct undo_log{
 	const char* segname;
 	int offset;

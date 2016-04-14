@@ -4,9 +4,13 @@
 #include <string>
 #include <stdlib.h>
 #include <vector>
+#include <map>
 
 static rvm_t g_id = 0;
-static std::vector<rvm> map_thing;
+static std::vector<rvm> rvm_vector;
+static std::map<char*, segment> seg_map;
+static std::map<char*, segment>::iterator itr;
+
 /*
   Initialize the library with the specified directory as backing store.
 */
@@ -19,7 +23,7 @@ rvm_t rvm_init(const char *directory){
         ; // Throw error
     rvm_obj.dir_path = s; // <== TODO: full path
     rvm_obj.id = g_id++;
-    map_thing.push_back(rvm_obj);
+    rvm_vector.push_back(rvm_obj);
     return rvm_obj.id;
 }
 
@@ -30,14 +34,25 @@ rvm_t rvm_init(const char *directory){
   It is an error to try to map the same segment twice.
 */
 void *rvm_map(rvm_t rvm, const char *segname, int size_to_create){
-
+	segment sgt;
+	//compare segname with segnames data structure
+	itr = seg_map.find(segname);
+	if (itr != mymap.end()) {
+			sgt.segaddr = (char*) realloc (segname, size_to_create);
+			seg_map.erase (itr);
+			seg_map [segname] = sgt;
+	} else {
+		sgt.segaddr = (char *) malloc(size_to_create);
+		seg_map [segname] = sgt;
+		}
+	return sgt.segaddr;
 }
 
 /*
   unmap a segment from memory.
 */
 void rvm_unmap(rvm_t rvm, void *segbase){
-
+	itr = seg_map.begin();
 }
 
 /*

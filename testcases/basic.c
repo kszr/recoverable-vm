@@ -1,6 +1,6 @@
 /* basic.c - test that basic persistency works */
 
-#include "rvm.h"
+#include "../rvm.h"
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
