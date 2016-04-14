@@ -62,19 +62,19 @@ rvm_t rvm_init(const char *directory){
   It is an error to try to map the same segment twice.
 */
 void *rvm_map(rvm_t rvm, const char *segname, int size_to_create){
-	segment *segtemp;
 	//compare segname with segnames data structure
 	itr = seg_map.find(segname);
-	if (itr != seg_map.end() && segtemp->ismapped == 1) {
-			segtemp->segaddr = (char*) realloc ((char*)segname, size_to_create);
-			seg_map.erase (itr);
-			seg_map [segname] = segtemp;
+	if (itr != seg_map.end() && itr->second->ismapped == 1) {
+			itr->second->segaddr = (char*) realloc ((char*)segname, size_to_create);
+			// seg_map.erase (itr);
+			// seg_map [segname] = itr->second;
 	} else {
+        segment *segtemp = (segment *) malloc(sizeof(segment));
 		segtemp->segaddr = (char *) malloc(size_to_create);
 		segtemp->ismapped = 1;
 		seg_map [segname] = segtemp;
 	}
-	return (void *) segtemp->segaddr;
+	return (void *) seg_map[segname]->segaddr;
 }
 
 /*
@@ -95,12 +95,12 @@ void rvm_destroy(rvm_t rvm, const char *segname){
     if(seg_map.count(segname) == 0)
         return;
         
-    segment curr = seg_map.at(segname);
+    segment *curr = seg_map.at(segname);
     
-    if(!curr.ismapped)
+    if(!curr->ismapped)
         seg_map.erase(segname);
     
-    free((void *) curr.segaddr);
+    free((void *) curr->segaddr);
 }
 
 /*
@@ -111,7 +111,7 @@ trans_t rvm_begin_trans(rvm_t rvm, int numsegs, void **segbases){
 // Check to see if any of the segments are being modified by a a transaction.
     for(int i=0; i<numsegs; i++) {
 	segment *segtemp = (segment*) malloc(sizeof(segtemp));
-	get_segment(segbase[i], segtemp);
+	get_segment(segbases[i], segtemp);
 	if  (segtemp != NULL && segtemp->busy == 1) {
 		return -1;
 	}           
