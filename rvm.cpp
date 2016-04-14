@@ -1,6 +1,7 @@
 #include"rvm.h"
 #include <unistd.h>
 #include <stdio.h>
+#include <string.h>
 #include <string>
 #include <stdlib.h>
 #include <vector>
@@ -17,11 +18,19 @@ static std::map<char*, segment>::iterator itr;
 rvm_t rvm_init(const char *directory){
     //rvm *rvm_obj = (rvm *) malloc(sizeof(rvm));
     rvm rvm_obj;
-    char *s = strcat("mkdir ", directory);
-    int i = system(s);
-    if(i<0)
-        ; // Throw error
-    rvm_obj.dir_path = s; // <== TODO: full path
+    char buf[sizeof("mkdir ")+sizeof(directory)];
+    strcpy(buf, "mkdir ");
+    strcat(buf, directory);
+ 
+    int i = system(buf);
+    
+    // TODO: Find out how to tell if mkdir failed...
+    if(i<0) {
+        fprintf(stderr, "Error: Directory already exists!\n");
+        exit(1); // Throw error
+    }
+    
+    rvm_obj.dir_path = buf; // <== TODO: full path
     rvm_obj.id = g_id++;
     rvm_vector.push_back(rvm_obj);
     return rvm_obj.id;

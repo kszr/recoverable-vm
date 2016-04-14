@@ -3,8 +3,13 @@ typedef int rvm_t;
 
 typedef struct rvm_s {
 	const char* dir_path;
+<<<<<<< HEAD
+    	rvm_t id;
+};
+=======
     rvm_t id;
 } rvm;
+>>>>>>> 64c14a415dcbfd8852e03e599320679f792499ad
 
 typedef struct segment {
 	const char* segaddr;
