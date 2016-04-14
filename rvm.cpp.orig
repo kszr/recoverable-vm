@@ -46,8 +46,13 @@ void *rvm_map(rvm_t rvm, const char *segname, int size_to_create){
 	segment sgt;
 	//compare segname with segnames data structure
 	itr = seg_map.find(segname);
+<<<<<<< HEAD
 	if (itr != seg_map.end() && sgt.ismapped == 1) {
 			sgt.segaddr = (char*) realloc ((char*)segname, size_to_create);
+=======
+	if (itr != seg_map.end()) {
+			sgt.segaddr = (char*) realloc ((char *) segname, size_to_create);
+>>>>>>> b72603a8b48ac21a9273b0f841c3e06fc6a00c68
 			seg_map.erase (itr);
 			seg_map [segname] = sgt;
 	} else {
@@ -95,7 +100,11 @@ void rvm_destroy(rvm_t rvm, const char *segname){
  */
 trans_t rvm_begin_trans(rvm_t rvm, int numsegs, void **segbases){
 
+<<<<<<< HEAD
+	return 1;
+=======
     return 0;
+>>>>>>> b72603a8b48ac21a9273b0f841c3e06fc6a00c68
 }
 
 /*

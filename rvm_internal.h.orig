@@ -1,28 +1,30 @@
 typedef int trans_t;
 typedef int rvm_t;
 
-typedef struct rvm_s {
+struct rvm {
 	const char* dir_path;
+    rvm_t id;
+};
+
 <<<<<<< HEAD
-    	rvm_t id;
+struct segment {
+	char* segaddr;
+	bool ismapped;
 };
 =======
-    rvm_t id;
-} rvm;
->>>>>>> 64c14a415dcbfd8852e03e599320679f792499ad
-
-typedef struct segment {
+typedef struct segment_s {
 	const char* segaddr;
 	bool kill;
-};
+} segment;
+>>>>>>> b72603a8b48ac21a9273b0f841c3e06fc6a00c68
 	
-typedef struct undo_log{
+struct undo_log{
 	const char* segname;
 	int offset;
 	int size;
 } undo_log;
 
-typedef struct redo_log{
+struct redo_log{
 	const char* segname;
 	int offset;
 	int size;
