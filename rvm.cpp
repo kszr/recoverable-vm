@@ -68,7 +68,15 @@ void rvm_unmap(rvm_t rvm, void *segbase){
   destroy a segment completely, erasing its backing store. This function should not be called on a segment that is currently mapped.
  */
 void rvm_destroy(rvm_t rvm, const char *segname){
-
+    if(seg_map.count(segname) == 0)
+        return;
+        
+    segment curr = seg_map.at(segname);
+    
+    if(curr.kill)
+        seg_map.erase(segname);
+    
+    free((void *) curr.segaddr);
 }
 
 /*
