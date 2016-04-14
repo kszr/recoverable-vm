@@ -114,8 +114,8 @@ trans_t rvm_begin_trans(rvm_t rvm, int numsegs, void **segbases){
 
 // Check to see if any of the segments are being modified by a a transaction.
     for(int i=0; i<numsegs; i++) {
-	segment *segtemp = (segment*) malloc(sizeof(segtemp));
-	get_segment(segbases[i], segtemp);
+        segment *segtemp = (segment*) malloc(sizeof(segtemp));
+        get_segment(segbases[i], segtemp);
         if  (segtemp != NULL && segtemp->busy == 1) {
             return -1;
         }           
