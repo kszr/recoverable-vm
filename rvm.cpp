@@ -16,21 +16,21 @@ static std::map<const char*, segment*>::iterator itr;
 /*
   Initialize the library with the specified directory as backing store.
 */
-void get_segment(void *segbase, segment *segtemp)
+segment *get_segment(void *segbase)
 {
 int found = 0;
-segtemp = NULL;
+segment *segtemp = NULL;
 	itr = seg_map.begin();
 	while(itr != seg_map.end()) {
 		found = ((long) itr-> second->segaddr == (long) segbase);
 		if(found) {
 			//itr-> second.ismapped = 0;
 			segtemp = itr-> second;
-			break;
+            break;
 		}
 		itr++;
 	}
-
+    return segtemp;
 }
 rvm_t rvm_init(const char *directory){
     char buf[sizeof("mkdir ")+sizeof(directory)];
@@ -82,8 +82,7 @@ void *rvm_map(rvm_t rvm, const char *segname, int size_to_create){
   unmap a segment from memory.
 */
 void rvm_unmap(rvm_t rvm, void *segbase){
-	segment *segtemp = (segment*)malloc(sizeof(segtemp));
-	get_segment(segbase, segtemp);
+	segment *segtemp = get_segment(segbase);
 	if  (segtemp != NULL) {
 		segtemp -> ismapped = 0;
 	}
@@ -114,8 +113,7 @@ trans_t rvm_begin_trans(rvm_t rvm, int numsegs, void **segbases){
 
 // Check to see if any of the segments are being modified by a a transaction.
     for(int i=0; i<numsegs; i++) {
-        segment *segtemp = (segment*) malloc(sizeof(segtemp));
-        get_segment(segbases[i], segtemp);
+        segment *segtemp = get_segment(segbases[i]);
         if  (segtemp != NULL && segtemp->busy == 1) {
             return -1;
         }           
