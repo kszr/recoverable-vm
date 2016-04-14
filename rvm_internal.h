@@ -22,10 +22,9 @@ struct undo_log{
 };
 
 struct redo_log{
-	const char* segname;
+    char *segbase;
+    char *metadata;
 	int offset;
-	int size;
-	
 };
 
 

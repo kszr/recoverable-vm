@@ -154,15 +154,46 @@ to disk so that, even if the program crashes,
 the changes will be seen by the program when it restarts.
 */
 void rvm_commit_trans(trans_t tid){
+    // Get rid of undo log.
+    undo_log *ul = undo_map[tid];
+    segment *seg = get_segment(ul->segbase);
 
+        
+    // Create redo log.
+    redo_log *rl = (redo_log *) sizeof(redo_log);
+    rl->segbase = ul->segbase;
+    rl->offset = ul->offset;
+    
+    // metadata something something
+    
+    
+    // Set busy to false;
+    seg->busy = false;
+    
+    // Check threshold; push to disk as necessary.
+    
+    // Get rid of undo log.
+    undo_map.erase(tid);
+    free(ul);
 }
 
 /*
   undo all changes that have happened within the specified transaction.
  */
 void rvm_abort_trans(trans_t tid){
-
-
+    undo_log *ul = undo_map[tid];
+    segment *seg = get_segment(ul->segbase);
+    
+    // Copy from undo log into segment.
+    memcpy(seg->data+ul->offset,ul->data,sizeof(ul->data)/sizeof(ul->data[0]));
+    
+    // Set busy to false
+    seg->busy = false;
+    
+    
+    // Get rid of undo log.
+    undo_map.erase(tid);
+    free(ul);
 }
 
 /*
