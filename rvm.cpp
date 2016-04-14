@@ -12,6 +12,7 @@ static trans_t tid;
 static std::vector<const char*> rvm_vector;
 static std::map<const char*, segment*> seg_map;
 static std::map<const char*, segment*>::iterator itr;
+static std::map<trans_t, undo_log*> undo_map;
 
 /*
   Initialize the library with the specified directory as backing store.
@@ -32,6 +33,7 @@ segment *segtemp = NULL;
 	}
     return segtemp;
 }
+
 rvm_t rvm_init(const char *directory){
     char buf[sizeof("mkdir ")+sizeof(directory)];
     strcpy(buf, "mkdir ");
@@ -75,6 +77,9 @@ void *rvm_map(rvm_t rvm, const char *segname, int size_to_create){
 		segtemp->ismapped = 1;
 		seg_map [segname] = segtemp;
 	}
+    
+    // TODO: Get data from disk.
+    
 	return (void *) seg_map[segname]->segaddr;
 }
 
@@ -128,12 +133,25 @@ trans_t rvm_begin_trans(rvm_t rvm, int numsegs, void **segbases){
   It is legal call rvm_about_to_modify multiple times on the same memory area.
 */
 void rvm_about_to_modify(trans_t tid, void *segbase, int offset, int size){
-
-//set busy flag here
+    undo_log *ul = (undo_log *) malloc(sizeof(undo_log));
+    ul->segbase = (char *) segbase;
+    ul->offset = offset;
+    
+    segment *seg = get_segment(segbase);
+    seg->busy = true;
+    
+    // TODO : Copy data;
+    ul->data = (char *) malloc(sizeof(char)*size);
+    memcpy(ul->data,seg->data+offset,size);
+    
+    undo_map[tid] = ul;
 }
 
 /*
-commit all changes that have been made within the specified transaction. When the call returns, then enough information should have been saved to disk so that, even if the program crashes, the changes will be seen by the program when it restarts.
+commit all changes that have been made within the specified transaction.
+When the call returns, then enough information should have been saved
+to disk so that, even if the program crashes,
+the changes will be seen by the program when it restarts.
 */
 void rvm_commit_trans(trans_t tid){
 

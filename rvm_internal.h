@@ -8,21 +8,24 @@ typedef int rvm_t;
 
 struct segment {
 	char* segaddr;
+    char *data;
 	bool ismapped;
 	bool busy;
 };
 	
 struct undo_log{
-	const char* segname;
+	// const char* segname;
+    char *segbase;
+    char *data;
 	int offset;
-	int size;
-} undo_log;
+	// int size;
+};
 
 struct redo_log{
 	const char* segname;
 	int offset;
 	int size;
 	
-} redo_log;
+};
 
 
