@@ -12,15 +12,16 @@ static trans_t tid;
 static std::vector<const char*> rvm_vector;
 static std::map<const char*, segment*> seg_map;
 static std::map<const char*, segment*>::iterator itr;
-static std::map<trans_t, undo_log*> undo_map;
+static std::map<trans_t, std::vector<undo_log*> > undo_map;
+static std::map<trans_t, std::vector<redo_log*> > redo_map;
 
 /*
   Initialize the library with the specified directory as backing store.
 */
 segment *get_segment(void *segbase)
 {
-int found = 0;
-segment *segtemp = NULL;
+    int found = 0;
+    segment *segtemp = NULL;
 	itr = seg_map.begin();
 	while(itr != seg_map.end()) {
 		found = ((long) itr-> second->segaddr == (long) segbase);
@@ -133,6 +134,9 @@ trans_t rvm_begin_trans(rvm_t rvm, int numsegs, void **segbases){
   It is legal call rvm_about_to_modify multiple times on the same memory area.
 */
 void rvm_about_to_modify(trans_t tid, void *segbase, int offset, int size){
+    if(undo_map.count(tid) == 0)
+        undo_map[tid] = std::vector<undo_log*>();
+        
     undo_log *ul = (undo_log *) malloc(sizeof(undo_log));
     ul->segbase = (char *) segbase;
     ul->offset = offset;
@@ -144,7 +148,8 @@ void rvm_about_to_modify(trans_t tid, void *segbase, int offset, int size){
     ul->data = (char *) malloc(sizeof(char)*size);
     memcpy(ul->data,seg->data+offset,size);
     
-    undo_map[tid] = ul;
+    
+    undo_map[tid].push_back(ul);
 }
 
 /*
@@ -155,45 +160,56 @@ the changes will be seen by the program when it restarts.
 */
 void rvm_commit_trans(trans_t tid){
     // Get rid of undo log.
-    undo_log *ul = undo_map[tid];
-    segment *seg = get_segment(ul->segbase);
+    redo_map[tid] = std::vector<redo_log*>();
+    
+    for(int i=0; i<undo_map[tid].size(); i++) {
+        undo_log *ul = undo_map[tid][i];
+        segment *seg = get_segment(ul->segbase);
 
+            
+        // Create redo log.
+        redo_log *rl = (redo_log *) malloc(sizeof(redo_log));
+        rl->segbase = ul->segbase;
+        rl->offset = ul->offset;
         
-    // Create redo log.
-    redo_log *rl = (redo_log *) sizeof(redo_log);
-    rl->segbase = ul->segbase;
-    rl->offset = ul->offset;
-    
-    // metadata something something
-    
-    
-    // Set busy to false;
-    seg->busy = false;
-    
-    // Check threshold; push to disk as necessary.
-    
-    // Get rid of undo log.
+        redo_map[tid].push_back(rl);
+        
+        // metadata something something
+        
+        
+        // Set busy to false;
+        seg->busy = false;
+        
+        // Check threshold; push to disk as necessary.
+        
+        // Get rid of undo log.
+        
+        free(ul);
+    }
+            
     undo_map.erase(tid);
-    free(ul);
 }
 
 /*
   undo all changes that have happened within the specified transaction.
  */
 void rvm_abort_trans(trans_t tid){
-    undo_log *ul = undo_map[tid];
-    segment *seg = get_segment(ul->segbase);
-    
-    // Copy from undo log into segment.
-    memcpy(seg->data+ul->offset,ul->data,sizeof(ul->data)/sizeof(ul->data[0]));
-    
-    // Set busy to false
-    seg->busy = false;
-    
-    
+    for(int i=undo_map[tid].size()-1; i>=0; i++) {
+        undo_log *ul = undo_map[tid][i];
+        segment *seg = get_segment(ul->segbase);
+        
+        // Copy from undo log into segment.
+        memcpy(seg->data+ul->offset,ul->data,sizeof(ul->data)/sizeof(ul->data[0]));
+        
+        // Set busy to false
+        seg->busy = false;
+        
+        undo_map[tid].pop_back();
+        free(ul);
+    }   
+            
     // Get rid of undo log.
     undo_map.erase(tid);
-    free(ul);
 }
 
 /*
