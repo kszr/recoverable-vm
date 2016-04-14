@@ -116,9 +116,9 @@ trans_t rvm_begin_trans(rvm_t rvm, int numsegs, void **segbases){
     for(int i=0; i<numsegs; i++) {
 	segment *segtemp = (segment*) malloc(sizeof(segtemp));
 	get_segment(segbases[i], segtemp);
-	if  (segtemp != NULL && segtemp->busy == 1) {
-		return -1;
-	}           
+        if  (segtemp != NULL && segtemp->busy == 1) {
+            return -1;
+        }           
     }
     return tid++;
 }
