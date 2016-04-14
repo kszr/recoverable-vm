@@ -12,7 +12,7 @@ LIB_SRC = rvm.cpp
 LIB_OBJ = $(patsubst %.cpp,%.o,$(LIB_SRC))
 
 %.o: %.cpp
-	$(CC) -c $(CFLAGS) $< -o $@
+	$(CC) -std=c++11 -c $(CFLAGS) $< -o $@
 
 $(LIBRARY): $(LIB_OBJ)
 	$(AR) $(LIBRARY) $(LIB_OBJ)

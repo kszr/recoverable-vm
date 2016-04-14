@@ -3,12 +3,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <string>
+#include <algorithm>
 #include <stdlib.h>
 #include <vector>
 #include <map>
 
-static rvm_t g_id = 0;
-static std::vector<rvm> rvm_vector;
+static std::vector<const char*> rvm_vector;
 static std::map<const char*, segment> seg_map;
 static std::map<const char*, segment>::iterator itr;
 
@@ -16,7 +16,6 @@ static std::map<const char*, segment>::iterator itr;
   Initialize the library with the specified directory as backing store.
 */
 rvm_t rvm_init(const char *directory){
-    rvm rvm_obj;
     char buf[sizeof("mkdir ")+sizeof(directory)];
     strcpy(buf, "mkdir ");
     strcat(buf, directory);
@@ -29,10 +28,15 @@ rvm_t rvm_init(const char *directory){
         exit(1); // Throw error
     }
     
-    rvm_obj.dir_path = buf; // <== TODO: full path
-    rvm_obj.id = g_id++;
-    rvm_vector.push_back(rvm_obj);
-    return rvm_obj.id;
+    std::vector<const char*>::iterator it;
+    it = std::find (rvm_vector.begin(), rvm_vector.end(), buf);
+    
+    if (std::find (rvm_vector.begin(), rvm_vector.end(), buf) == rvm_vector.end())
+        return it-rvm_vector.begin();
+  
+    rvm_vector.push_back(buf);
+    
+    return rvm_vector.size()-1;
 }
 
 /*
@@ -83,7 +87,7 @@ void rvm_destroy(rvm_t rvm, const char *segname){
         
     segment curr = seg_map.at(segname);
     
-    if(curr.kill)
+    if(!curr.ismapped)
         seg_map.erase(segname);
     
     free((void *) curr.segaddr);
