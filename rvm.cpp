@@ -8,6 +8,7 @@
 #include <vector>
 #include <map>
 
+static trans_t tid;
 static std::vector<const char*> rvm_vector;
 static std::map<const char*, segment*> seg_map;
 static std::map<const char*, segment*>::iterator itr;
@@ -104,7 +105,10 @@ void rvm_destroy(rvm_t rvm, const char *segname){
 }
 
 /*
-  begin a transaction that will modify the segments listed in segbases. If any of the specified segments is already being modified by a transaction, then the call should fail and return (trans_t) -1. Note that trant_t needs to be able to be typecasted to an integer type.
+  begin a transaction that will modify the segments listed in segbases.
+  If any of the specified segments is already being modified by a transaction,
+  then the call should fail and return (trans_t) -1.
+  Note that trant_t needs to be able to be typecasted to an integer type.
  */
 trans_t rvm_begin_trans(rvm_t rvm, int numsegs, void **segbases){
 
@@ -116,7 +120,7 @@ trans_t rvm_begin_trans(rvm_t rvm, int numsegs, void **segbases){
 		return -1;
 	}           
     }
-    return 0;
+    return tid++;
 }
 
 /*
