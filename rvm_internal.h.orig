@@ -6,10 +6,17 @@ struct rvm {
     rvm_t id;
 };
 
+<<<<<<< HEAD
 struct segment {
 	char* segaddr;
 	bool ismapped;
 };
+=======
+typedef struct segment_s {
+	const char* segaddr;
+	bool kill;
+} segment;
+>>>>>>> b72603a8b48ac21a9273b0f841c3e06fc6a00c68
 	
 struct undo_log{
 	const char* segname;
