@@ -72,7 +72,7 @@ rvm_t rvm_init(const char *directory){
 void *rvm_map(rvm_t rvm, const char *segname, int size_to_create){
 	//compare segname with segnames data structure
 	itr = seg_map.find(segname);
-	if (itr != seg_map.end() && itr->second->ismapped == true) {
+	if (itr != seg_map.end() && itr->second->ismapped == 1) {
 			itr->second->segaddr = (char*) realloc ((char*)segname, size_to_create);
 			// seg_map.erase (itr);
 			printf("Segment already present\n");
@@ -133,7 +133,7 @@ trans_t rvm_begin_trans(rvm_t rvm, int numsegs, void **segbases){
 // Check to see if any of the segments are being modified by a a transaction.
     for(int i=0; i<numsegs; i++) {
         segment *segtemp = get_segment(segbases[i]);
-        if  (segtemp != NULL && segtemp->busy == true) {
+        if  (segtemp != NULL && segtemp->busy == 1) {
             return -1;
         }           
     }
