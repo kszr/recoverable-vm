@@ -7,24 +7,24 @@ typedef int rvm_t;
 // };
 
 struct segment {
-	char* segaddr;
+    char* segaddr;
     char *data;
-	bool ismapped;
-	bool busy;
+    bool ismapped;
+    bool busy;
 };
 	
 struct undo_log{
 	// const char* segname;
     char *segbase;
     char *data;
-	int offset;
+    int offset;
 	// int size;
 };
 
 struct redo_log{
     char *segbase;
     char *metadata;
-	int offset;
+    int offset;
 };
 
 

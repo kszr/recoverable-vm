@@ -36,6 +36,8 @@ segment *get_segment(void *segbase)
 }
 
 rvm_t rvm_init(const char *directory){
+
+    //TODO: Add code for retrieving path for an existing directory
     char buf[sizeof("mkdir ")+sizeof(directory)];
     strcpy(buf, "mkdir ");
     strcat(buf, directory);
@@ -68,14 +70,14 @@ rvm_t rvm_init(const char *directory){
 void *rvm_map(rvm_t rvm, const char *segname, int size_to_create){
 	//compare segname with segnames data structure
 	itr = seg_map.find(segname);
-	if (itr != seg_map.end() && itr->second->ismapped == 1) {
+	if (itr != seg_map.end() && itr->second->ismapped == true) {
 			itr->second->segaddr = (char*) realloc ((char*)segname, size_to_create);
 			// seg_map.erase (itr);
 			// seg_map [segname] = itr->second;
 	} else {
         segment *segtemp = (segment *) malloc(sizeof(segment));
 		segtemp->segaddr = (char *) malloc(size_to_create);
-		segtemp->ismapped = 1;
+		segtemp->ismapped = true;
 		seg_map [segname] = segtemp;
 	}
     
@@ -90,7 +92,7 @@ void *rvm_map(rvm_t rvm, const char *segname, int size_to_create){
 void rvm_unmap(rvm_t rvm, void *segbase){
 	segment *segtemp = get_segment(segbase);
 	if  (segtemp != NULL) {
-		segtemp -> ismapped = 0;
+		segtemp -> ismapped = false;
 	}
 }
 
@@ -120,7 +122,7 @@ trans_t rvm_begin_trans(rvm_t rvm, int numsegs, void **segbases){
 // Check to see if any of the segments are being modified by a a transaction.
     for(int i=0; i<numsegs; i++) {
         segment *segtemp = get_segment(segbases[i]);
-        if  (segtemp != NULL && segtemp->busy == 1) {
+        if  (segtemp != NULL && segtemp->busy == true) {
             return -1;
         }           
     }
@@ -216,7 +218,7 @@ void rvm_abort_trans(trans_t tid){
  play through any committed or aborted items in the log file(s) and shrink the log file(s) as much as possible.
 */
 void rvm_truncate_log(rvm_t rvm){
-
+	printf("Truncate will happen\n");
 
 }
 
