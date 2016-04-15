@@ -4,3 +4,4 @@
 *.out
 *.dSYM
 *.a
+*.h.gch

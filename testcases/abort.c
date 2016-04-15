@@ -1,7 +1,7 @@
 /* abort.c - test that aborting a modification returns the segment to
  * its initial state */
 
-#include "rvm.h"
+#include "../rvm.h"
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>

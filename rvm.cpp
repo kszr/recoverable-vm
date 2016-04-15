@@ -45,10 +45,10 @@ rvm_t rvm_init(const char *directory){
     int i = system(buf);
     
     // TODO: Find out how to tell if mkdir failed...
-    if(i<0) {
-        fprintf(stderr, "Error: Directory already exists!\n");
-        exit(1); // Throw error
-    }
+    // if(i<0) {
+    //     fprintf(stderr, "Error: Directory already exists!\n");
+    //     exit(1); // Throw error
+    // }
     
     std::vector<const char*>::iterator it;
     it = std::find (rvm_vector.begin(), rvm_vector.end(), buf);
@@ -77,7 +77,7 @@ void *rvm_map(rvm_t rvm, const char *segname, int size_to_create){
 	} else {
         segment *segtemp = (segment *) malloc(sizeof(segment));
 		segtemp->segaddr = (char *) malloc(size_to_create);
-		segtemp->ismapped = true;
+		segtemp->ismapped = 1;
 		seg_map [segname] = segtemp;
 	}
     
@@ -92,7 +92,7 @@ void *rvm_map(rvm_t rvm, const char *segname, int size_to_create){
 void rvm_unmap(rvm_t rvm, void *segbase){
 	segment *segtemp = get_segment(segbase);
 	if  (segtemp != NULL) {
-		segtemp -> ismapped = false;
+		segtemp -> ismapped = 0;
 	}
 }
 
@@ -144,7 +144,7 @@ void rvm_about_to_modify(trans_t tid, void *segbase, int offset, int size){
     ul->offset = offset;
     
     segment *seg = get_segment(segbase);
-    seg->busy = true;
+    seg->busy = 1;
     
     // TODO : Copy data;
     ul->data = (char *) malloc(sizeof(char)*size);
@@ -180,7 +180,7 @@ void rvm_commit_trans(trans_t tid){
         
         
         // Set busy to false;
-        seg->busy = false;
+        seg->busy = 0;
         
         // Check threshold; push to disk as necessary.
         
@@ -204,7 +204,7 @@ void rvm_abort_trans(trans_t tid){
         memcpy(seg->data+ul->offset,ul->data,sizeof(ul->data)/sizeof(ul->data[0]));
         
         // Set busy to false
-        seg->busy = false;
+        seg->busy = 0;
         
         undo_map[tid].pop_back();
         free(ul);

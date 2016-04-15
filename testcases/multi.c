@@ -1,7 +1,7 @@
 /* multi.c - test that basic persistency works for multiple segments */
 
 
-#include "rvm.h"
+#include "../rvm.h"
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
