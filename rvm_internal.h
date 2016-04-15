@@ -1,14 +1,14 @@
 typedef int trans_t;
-typedef int rvm_t;
+//typedef int rvm_t;
 
-// struct rvm {
-// 	const char* dir_path;
-//     rvm_t id;
-// };
+ struct rvm_t {
+ 	const char* dir_path;
+        char* log_file;
+ };
 
 struct segment {
-    char* segaddr;
-    char *data;
+    char* segbase;
+    //char *data;
     int ismapped;
     int busy;
 };
