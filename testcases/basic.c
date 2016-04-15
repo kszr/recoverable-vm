@@ -27,9 +27,10 @@ void proc1()
      
      rvm_about_to_modify(trans, segs[0], 0, 100);
      sprintf(segs[0], TEST_STRING);
-     
+     printf("Segment Data %s\n", segs[0]);
      rvm_about_to_modify(trans, segs[0], OFFSET2, 100);
      sprintf(segs[0]+OFFSET2, TEST_STRING);
+     printf("Segment Data %s\n", segs[0]);
      
      rvm_commit_trans(trans);
 

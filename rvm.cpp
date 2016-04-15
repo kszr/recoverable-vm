@@ -149,6 +149,8 @@ trans_t rvm_begin_trans(rvm_t rvm, int numsegs, void **segbases){
   It is legal call rvm_about_to_modify multiple times on the same memory area.
 */
 void rvm_about_to_modify(trans_t tid, void *segbase, int offset, int size){
+
+    printf("About to Modify started\n");
     if(undo_map.count(tid) == 0)
         undo_map[tid] = std::vector<undo_log*>();
         
@@ -158,14 +160,16 @@ void rvm_about_to_modify(trans_t tid, void *segbase, int offset, int size){
     
     segment *seg = get_segment(segbase);
     seg->busy = 1;
-    
+    printf("Segment Data in About to Modify %s\n", seg->data);
     // TODO : Copy data;
     ul->data = (char *) malloc(sizeof(char)*size);
     memcpy(ul->data,seg->data+offset,size);
-    
+    printf("Segment Data in undo log %s\n", ul->data);
     
     undo_map[tid].push_back(ul);
     
+     //printf("Segment Data in About to Modify %s\n", seg->data);
+     
     printf("About to Modify Completed\n");
 }
 
