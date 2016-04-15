@@ -37,6 +37,7 @@ segment *get_segment(void *segbase)
 
 rvm_t rvm_init(const char *directory){
 
+    printf("Init started\n");
     //TODO: Add code for retrieving path for an existing directory
     char buf[sizeof("mkdir ")+sizeof(directory)];
     strcpy(buf, "mkdir ");
@@ -59,6 +60,7 @@ rvm_t rvm_init(const char *directory){
     rvm_vector.push_back(buf);
     
     return rvm_vector.size()-1;
+    printf("Init Completed\n");
 }
 
 /*
@@ -73,17 +75,21 @@ void *rvm_map(rvm_t rvm, const char *segname, int size_to_create){
 	if (itr != seg_map.end() && itr->second->ismapped == true) {
 			itr->second->segaddr = (char*) realloc ((char*)segname, size_to_create);
 			// seg_map.erase (itr);
+			printf("Segment already present\n");
 			// seg_map [segname] = itr->second;
 	} else {
         segment *segtemp = (segment *) malloc(sizeof(segment));
 		segtemp->segaddr = (char *) malloc(size_to_create);
 		segtemp->ismapped = 1;
 		seg_map [segname] = segtemp;
+		printf("New Segment created\n");
 	}
     
     // TODO: Get data from disk.
     
 	return (void *) seg_map[segname]->segaddr;
+	
+    printf("Map Completed\n");
 }
 
 /*
@@ -94,12 +100,15 @@ void rvm_unmap(rvm_t rvm, void *segbase){
 	if  (segtemp != NULL) {
 		segtemp -> ismapped = 0;
 	}
+	
+    printf("Unmap Completed\n");
 }
 
 /*
   destroy a segment completely, erasing its backing store. This function should not be called on a segment that is currently mapped.
  */
 void rvm_destroy(rvm_t rvm, const char *segname){
+    printf("Destroy started\n");
     if(seg_map.count(segname) == 0)
         return;
         
@@ -109,6 +118,8 @@ void rvm_destroy(rvm_t rvm, const char *segname){
         seg_map.erase(segname);
     
     free((void *) curr->segaddr);
+    
+    printf("Destroy Completed\n");
 }
 
 /*
@@ -127,6 +138,8 @@ trans_t rvm_begin_trans(rvm_t rvm, int numsegs, void **segbases){
         }           
     }
     return tid++;
+    
+    printf("Begin Trans Completed\n");
 }
 
 /*
@@ -152,6 +165,8 @@ void rvm_about_to_modify(trans_t tid, void *segbase, int offset, int size){
     
     
     undo_map[tid].push_back(ul);
+    
+    printf("About to Modify Completed\n");
 }
 
 /*
@@ -190,6 +205,8 @@ void rvm_commit_trans(trans_t tid){
     }
             
     undo_map.erase(tid);
+    
+    printf("Commit Completed\n");
 }
 
 /*
@@ -212,6 +229,8 @@ void rvm_abort_trans(trans_t tid){
             
     // Get rid of undo log.
     undo_map.erase(tid);
+    
+    printf("Abort Completed\n");
 }
 
 /*
