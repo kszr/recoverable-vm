@@ -218,7 +218,7 @@ trans_t rvm_begin_trans(rvm_t rvm, int numsegs, void **segbases){
     segment_t **segtracker = new segment_t*[numsegs];
     
     // Maintain an array in memory that keeps track of which segments are being
-    // prepped for a transaction. Disguse the pointer to this array as tid
+    // prepped for a transaction. Disguise the pointer to this array as tid
     // so that it can be referenced just by passing tid to a function.
     for(int i=0; i<numsegs; i++) {
         segment_t *segtemp = get_segment(rvm, segbases[i]);
