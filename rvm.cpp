@@ -138,11 +138,15 @@ void *rvm_map(rvm_t rvm, const char *segname, int size_to_create) {
 	if (itr != rvm.seg_map.end()) {
         itr->second->segbase = (char*) realloc ((char*)segname, size_to_create);
         itr->second->ismapped = 1;
+        itr->second->ul = NULL;
+        itr->second->rl = NULL;
         printf("Segment already present\n");
 	} else {
         segment_t *segtemp = (segment_t *) malloc(sizeof(segment_t));
 		segtemp->segbase = (char *) malloc(size_to_create);
 		segtemp->ismapped = 1;
+        segtemp->ul = NULL;
+        segtemp->rl = NULL;
 		rvm.seg_map[segname] = segtemp;
         
         char buf[sizeof("touch ")+sizeof(segname)+4];
@@ -237,13 +241,15 @@ void rvm_about_to_modify(trans_t tid, void *segbase, int offset, int size){
     printf("About to Modify started with segbase %lu\n", (long) segbase);
     
     segment_t **segtracker = (segment_t **) tid;
+    segment_t *seg = NULL;
     
     // Make sure that the segment being passed in can be modified - 
     // i.e., it is present in segtracker.
     int found = 0;
     for(size_t i=0; i<sizeof(segtracker)/sizeof(segment_t*); i++) {
-        if(segtracker[i] == segbase) {
+        if(segtracker[i]->segbase == segbase) {
             found = 1;
+            seg = segtracker[i];
             break;
         }
     }
@@ -265,9 +271,9 @@ void rvm_about_to_modify(trans_t tid, void *segbase, int offset, int size){
         
     printf("Segment Data in undo log %s\n", ul->data);
     
-    // TODO: Figure out how to store the undo log so that it can be
-    // retrieved with minimal information...
-     
+    // Store the undo log in the segment being modified.
+    seg->ul = ul;
+    
     printf("About to Modify Completed\n");
 }
 
@@ -282,8 +288,13 @@ void rvm_commit_trans(trans_t tid) {
     // redo_map[tid] = std::vector<redo_log*>();
     
     segment_t **segtracker = (segment_t **) tid;
-    
-    
+    segment_t *seg;
+
+    // Get rid of undo logs.
+    for(size_t i=0; i<sizeof(segtracker)/sizeof(segment_t*); i++) {
+        free(segtracker[i]->ul);
+        segtracker[i]->ul = NULL;
+    }
     
     /*
     for(int i=0; i<undo_map[tid].size(); i++) {
