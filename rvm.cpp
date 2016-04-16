@@ -279,9 +279,10 @@ void rvm_about_to_modify(trans_t tid, void *segbase, int offset, int size){
     printf("Segment Data in undo log %s\n", ul->data);
     
     // Store the undo log in the segment being modified.
-    // Assumption is that, while several segments can be modified in a given
-    // transaction, a single segment can be modified only once, so we're keeping
-    // only one copy of 
+    // The assumption is that, while several segments can be modified in a given
+    // transaction, a single segment can be modified only once, so we keep
+    // only one copy of the undo log, which gets overwritten when about_to_modify()
+    // is called multiple times in the same transaction.
     seg->ul = ul;
     
     printf("About to Modify Completed\n");
