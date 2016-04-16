@@ -1,6 +1,7 @@
 #include"rvm.h"
 #include <unistd.h>
 #include <iostream>
+#include <fstream>
 #include <stdio.h>
 #include <string.h>
 #include <string>
@@ -8,24 +9,90 @@
 #include <stdlib.h>
 #include <vector>
 #include <map>
+#include <dirent.h>
 
 using namespace std;
-static trans_t tid;
-static std::vector<const char*> rvm_vector;
-static std::map<const char*, segment*> seg_map;
-static std::map<const char*, segment*>::iterator itr;
-static std::map<trans_t, std::vector<undo_log*> > undo_map;
-static std::map<trans_t, std::vector<redo_log*> > redo_map;
+//static trans_t tid;
+// static std::vector<const char*> rvm_vector;
+// static std::map<const char*, segment_t*> seg_map;
+// static std::map<const char*, segment_t*>::iterator itr;
+// static std::map<trans_t, std::vector<undo_log_t*> > undo_map;
+// static std::map<trans_t, std::vector<redo_log_t*> > redo_map;
+
+/* =============== Helper Functions =============== */
+
+/**
+ * Reads from the file specified by filepath and returns its contents as a string.
+ */ 
+char *read_from_file(char *filepath) {
+    std::ifstream t;
+    int length;
+    t.open(filepath);                   // open input file
+    t.seekg(0, std::ios::end);          // go to the end
+    length = t.tellg();                 // report location (this is the length)
+    t.seekg(0, std::ios::beg);          // go back to the beginning
+    char *buffer = new char[length];    // allocate memory for a buffer of appropriate dimension
+    t.read(buffer, length);             // read the whole file into the buffer
+    t.close();                          // close file handle
+    return buffer;
+}
+
+/**
+ * Returns a vector of files in directory dirpath with extension ext.
+ * Note that ext does not include '.' .
+ */
+std::vector<char*> get_file_list(std::string dirpath, std::string ext) {
+    DIR *dpdf;
+    struct dirent *epdf;
+    std::vector<char *> vec;
+    
+    dpdf = opendir(dirpath.c_str());
+    
+    if (dpdf != NULL) {
+       while ( (epdf = readdir(dpdf))) {
+          std::string name(epdf->d_name);
+          if(name.size()>ext.size() && 
+                !(name.substr(name.size()-ext.size()-1, ext.size()+1).compare("."+ext)) )
+            vec.push_back(epdf->d_name);
+       }
+    } 
+    return vec;
+}
+
+/**
+ * Gets the base name of a file from its filename. Ext must not 
+ * contain the '.' character.
+ */
+const char *get_base_name(std::string filename, std::string ext) {
+    int i = filename.find_last_of("."+ext);
+    return filename.substr(0,i).c_str();
+}
+
+/**
+ * Reads any .seg files that may be on disk and reconstructs segments.
+ */
+void restore_segs_from_disk(rvm_t *rvm) {
+    std::vector<char*> seg_files = get_file_list(rvm->dirpath, "seg");
+    for(auto &file : seg_files) {
+        segment_t *seg = (segment_t *) malloc(sizeof(segment_t));
+        char *data = read_from_file(file);
+        seg->segbase = (char *) malloc(sizeof(data));
+        if(data)
+            sprintf(seg->segbase, data);
+        seg->ismapped = 0;
+        rvm->seg_map[get_base_name(file, "seg")] = seg;
+    }
+}
 
 /*
-  Initialize the library with the specified directory as backing store.
+  Returns the segment, if any, associated with addr segbase.
 */
-segment *get_segment(void *segbase)
-{
+segment_t *get_segment(rvm_t rvm, void *segbase) {
+    std::map<const char*, segment_t*>::iterator itr;
     int found = 0;
-    segment *segtemp = NULL;
-	itr = seg_map.begin();
-	while(itr != seg_map.end()) {
+    segment_t *segtemp = NULL;
+	itr = rvm.seg_map.begin();
+	while(itr != rvm.seg_map.end()) {
 		found = ((long) itr-> second->segbase == (long) segbase);
 		if(found) {
 			//itr-> second.ismapped = 0;
@@ -37,31 +104,27 @@ segment *get_segment(void *segbase)
     return segtemp;
 }
 
-rvm_t rvm_init(const char *directory){
+/* =============== END Helper Functions =============== */
 
+/**
+ * Initializes an rvm_t instance with the directory name that is passed in,
+ * creating the directory if necessary.
+ */
+rvm_t rvm_init(const char *directory) {
     printf("Init started\n");
-    //TODO: Add code for retrieving path for an existing directory
     char buf[sizeof("mkdir ")+sizeof(directory)];
     strcpy(buf, "mkdir ");
     strcat(buf, directory);
  
-    int i = system(buf);
+    system(buf);
     
-    // TODO: Find out how to tell if mkdir failed...
-    // if(i<0) {
-    //     fprintf(stderr, "Error: Directory already exists!\n");
-    //     exit(1); // Throw error
-    // }
+    rvm_t rvm;
+    rvm.dirpath = directory;
+    rvm.g_tid=0;
     
-    std::vector<const char*>::iterator it;
-    it = std::find (rvm_vector.begin(), rvm_vector.end(), buf);
-    
-    if (std::find (rvm_vector.begin(), rvm_vector.end(), buf) == rvm_vector.end())
-        return it-rvm_vector.begin();
-  
-    rvm_vector.push_back(buf);
-    
-    return rvm_vector.size()-1;
+    // Restores segments from disk, if any.
+    restore_segs_from_disk(&rvm);
+    return rvm;
 }
 
 /*
@@ -70,43 +133,43 @@ rvm_t rvm_init(const char *directory){
   is shorter than size_to_create, then extend it until it is long enough.
   It is an error to try to map the same segment twice.
 */
-void *rvm_map(rvm_t rvm, const char *segname, int size_to_create){
+void *rvm_map(rvm_t rvm, const char *segname, int size_to_create) {
 	//compare segname with segnames data structure
-	itr = seg_map.find(segname);
-	if (itr != seg_map.end() && itr->second->ismapped == 1) {
-			itr->second->segbase = (char*) realloc ((char*)segname, size_to_create);
-			// seg_map.erase (itr);
-			printf("Segment already present\n");
-			// seg_map [segname] = itr->second;
+    std::map<const char*, segment_t*>::iterator itr;
+	itr = rvm.seg_map.find(segname);
+	if (itr != rvm.seg_map.end()) {
+        itr->second->segbase = (char*) realloc ((char*)segname, size_to_create);
+        itr->second->ismapped = 1;
+        printf("Segment already present\n");
 	} else {
-        segment *segtemp = (segment *) malloc(sizeof(segment));
+        segment_t *segtemp = (segment_t *) malloc(sizeof(segment_t));
 		segtemp->segbase = (char *) malloc(size_to_create);
 		segtemp->ismapped = 1;
-		seg_map [segname] = segtemp;
+		rvm.seg_map[segname] = segtemp;
+        
+        char buf[sizeof("touch ")+sizeof(segname)+4];
+        sprintf(buf,"%s%s%s","touch ",segname,".seg");
+        system(buf);
+        
 		printf("New Segment created\n");
 	}
     
-    // TODO: Get data from disk.
- printf("Printing Key Values\n");
+    printf("Printing Key Values\n");
     
-for(itr = seg_map.begin();itr != seg_map.end(); ++itr)
-{
-
-    std::cout << itr->first << "\n";
-}
+    for(itr = rvm.seg_map.begin();itr != rvm.seg_map.end(); ++itr) {
+        std::cout << itr->first << "\n";
+    }
     
-	return (void *) seg_map[segname]->segbase;
-	
-    
+	return (void *) rvm.seg_map[segname]->segbase;
 }
 
 /*
   unmap a segment from memory.
 */
-void rvm_unmap(rvm_t rvm, void *segbase){
-	segment *segtemp = get_segment(segbase);
+void rvm_unmap(rvm_t rvm, void *segbase) {
+	segment_t *segtemp = get_segment(rvm, segbase);
 	if  (segtemp != NULL) {
-		segtemp -> ismapped = 0;
+		segtemp->ismapped = 0;
 	}
 	
     printf("Unmap Completed\n");
@@ -115,18 +178,22 @@ void rvm_unmap(rvm_t rvm, void *segbase){
 /*
   destroy a segment completely, erasing its backing store. This function should not be called on a segment that is currently mapped.
  */
-void rvm_destroy(rvm_t rvm, const char *segname){
+void rvm_destroy(rvm_t rvm, const char *segname) {
     printf("Destroy started\n");
-    if(seg_map.count(segname) == 0)
+    if(rvm.seg_map.count(segname) == 0)
         return;
         
-    segment *curr = seg_map.at(segname);
+    segment_t *curr = rvm.seg_map[segname];
     
     if(!curr->ismapped)
-        seg_map.erase(segname);
+        rvm.seg_map.erase(segname);
     
     free((void *) curr->segbase);
     
+    char buf[sizeof("rm ")+sizeof(segname)+4];
+    sprintf(buf,"%s%s%s","touch ",segname,".seg");
+    system(buf);
+
     printf("Destroy Completed\n");
 }
 
@@ -137,17 +204,29 @@ void rvm_destroy(rvm_t rvm, const char *segname){
   Note that trant_t needs to be able to be typecasted to an integer type.
  */
 trans_t rvm_begin_trans(rvm_t rvm, int numsegs, void **segbases){
-
-// Check to see if any of the segments are being modified by a a transaction.
+    // Initial check to see if any of the segments is being modified.
     for(int i=0; i<numsegs; i++) {
-        segment *segtemp = get_segment(segbases[i]);
-        if  (segtemp != NULL && segtemp->busy == 1) {
+        segment_t *segtemp = get_segment(rvm, segbases[i]);
+        if  (segtemp == NULL || segtemp->busy == 1) {
+            printf("Begin Transaction Failed to Complete\n");
             return -1;
         }           
     }
-    return tid++;
     
-    printf("Begin Trans Completed\n");
+    segment_t **segtracker = new segment_t*[numsegs];
+    
+    // Maintain an array in memory that keeps track of which segments are being
+    // prepped for a transaction. Disguse the pointer to this array as tid
+    // so that it can be referenced just by passing tid to a function.
+    for(int i=0; i<numsegs; i++) {
+        segment_t *segtemp = get_segment(rvm, segbases[i]);
+        segtracker[i] = segtemp;
+        segtemp->busy = 1;
+    }
+            
+    printf("Begin Transaction Completed\n");
+    
+    return (trans_t) segtracker;
 }
 
 /*
@@ -157,27 +236,39 @@ trans_t rvm_begin_trans(rvm_t rvm, int numsegs, void **segbases){
   It is legal call rvm_about_to_modify multiple times on the same memory area.
 */
 void rvm_about_to_modify(trans_t tid, void *segbase, int offset, int size){
-
     printf("About to Modify started with segbase %lu\n", (long) segbase);
-    if(undo_map.count(tid) == 0)
-        undo_map[tid] = std::vector<undo_log*>();
+    
+    segment_t **segtracker = (segment_t **) tid;
+    
+    // Make sure that the segment being passed in can be modified - 
+    // i.e., it is present in segtracker.
+    int found = 0;
+    for(int i=0; i<sizeof(segtracker)/sizeof(segment_t*); i++) {
+        if(segtracker[i] == segbase) {
+            found = 1;
+            break;
+        }
+    }
+    
+    if(!found) {
+        printf("Operation not valid!\n");
+        return;
+    }
         
-    undo_log *ul = (undo_log *) malloc(sizeof(undo_log));
+    undo_log_t *ul = (undo_log_t *) malloc(sizeof(undo_log_t));
     ul->segbase = (char *) segbase;
     ul->offset = offset;
     
-    segment *seg = get_segment(segbase);
-    seg->busy = 1;
     printf("Segment Data in About to Modify %s\n", (char*)(segbase));
-    // TODO : Copy data;
+
     ul->data = (char *) malloc(sizeof(char)*size);
-    if(segbase+offset)
-        memcpy(ul->data,segbase+offset,size);
+    if((char *) segbase + offset)
+        memcpy(ul->data, (char *) segbase + offset, size);
+        
     printf("Segment Data in undo log %s\n", ul->data);
     
-    undo_map[tid].push_back(ul);
-    
-     //printf("Segment Data in About to Modify %s\n", seg->data);
+    // TODO: Figure out how to store the undo log so that it can be
+    // retrieved with minimal information...
      
     printf("About to Modify Completed\n");
 }
@@ -188,10 +279,12 @@ When the call returns, then enough information should have been saved
 to disk so that, even if the program crashes,
 the changes will be seen by the program when it restarts.
 */
-void rvm_commit_trans(trans_t tid){
+void rvm_commit_trans(trans_t tid) {
     // Get rid of undo log.
-    redo_map[tid] = std::vector<redo_log*>();
+    // redo_map[tid] = std::vector<redo_log*>();
     
+    
+    /*
     for(int i=0; i<undo_map[tid].size(); i++) {
         undo_log *ul = undo_map[tid][i];
         segment *seg = get_segment(ul->segbase);
@@ -218,6 +311,7 @@ void rvm_commit_trans(trans_t tid){
     }
             
     undo_map.erase(tid);
+    */
     
     printf("Commit Completed\n");
 }
@@ -227,6 +321,8 @@ void rvm_commit_trans(trans_t tid){
  */
 void rvm_abort_trans(trans_t tid){
     printf("Abort started\n");
+    
+    /*
     for(int i=undo_map[tid].size()-1; i>=0; i--) {
         undo_log *ul = undo_map[tid][i];
         segment *seg = get_segment(ul->segbase);
@@ -244,6 +340,7 @@ void rvm_abort_trans(trans_t tid){
             
     // Get rid of undo log.
     undo_map.erase(tid);
+    */
     
     printf("Abort Completed\n");
 }
@@ -252,7 +349,7 @@ void rvm_abort_trans(trans_t tid){
  play through any committed or aborted items in the log file(s) and shrink the log file(s) as much as possible.
 */
 void rvm_truncate_log(rvm_t rvm){
-	printf("Truncate will happen\n");
+	printf("Truncating\n");
 
 }
 
