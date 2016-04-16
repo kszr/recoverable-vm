@@ -258,7 +258,14 @@ void rvm_about_to_modify(trans_t tid, void *segbase, int offset, int size){
         printf("Operation not valid!\n");
         return;
     }
-        
+    
+    // Multiple calls to about_to_modify() results in overwriting undo log.
+    if(seg->ul){
+        if(seg->ul) {
+            free(seg->ul->data);
+        }
+        free(seg->ul);
+    }
     undo_log_t *ul = (undo_log_t *) malloc(sizeof(undo_log_t));
     ul->segbase = (char *) segbase;
     ul->offset = offset;
@@ -272,6 +279,9 @@ void rvm_about_to_modify(trans_t tid, void *segbase, int offset, int size){
     printf("Segment Data in undo log %s\n", ul->data);
     
     // Store the undo log in the segment being modified.
+    // Assumption is that, while several segments can be modified in a given
+    // transaction, a single segment can be modified only once, so we're keeping
+    // only one copy of 
     seg->ul = ul;
     
     printf("About to Modify Completed\n");
@@ -288,11 +298,16 @@ void rvm_commit_trans(trans_t tid) {
     // redo_map[tid] = std::vector<redo_log*>();
     
     segment_t **segtracker = (segment_t **) tid;
-    segment_t *seg;
+    // segment_t *seg;
 
     // Get rid of undo logs.
     for(size_t i=0; i<sizeof(segtracker)/sizeof(segment_t*); i++) {
-        free(segtracker[i]->ul);
+        if(segtracker[i]->ul){
+            if(segtracker[i]->ul) {
+                free(segtracker[i]->ul->data);
+            }
+            free(segtracker[i]->ul);
+        }
         segtracker[i]->ul = NULL;
     }
     
