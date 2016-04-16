@@ -5,3 +5,5 @@
 *.dSYM
 *.a
 *.h.gch
+*.seg
+*.log

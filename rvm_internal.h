@@ -2,6 +2,7 @@
 #include <vector>
 
 typedef long trans_t;
+
 //typedef int rvm_t;
 
 struct undo_log_t {
@@ -26,10 +27,12 @@ struct segment_t {
     redo_log_t *rl;
 };
 
- struct rvm_t {
+ struct rvm_s {
  	const char *dirpath;   // Directory that this rvm_t instance is responsible for.
     char *log_file;
     std::map<const char*, segment_t*> seg_map; // Keeps track of all segments maintained by this instance.
  };
+ 
+ typedef rvm_s* rvm_t;
 
 
