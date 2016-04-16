@@ -95,7 +95,6 @@ segment_t *get_segment(rvm_t rvm, void *segbase) {
 	while(itr != rvm.seg_map.end()) {
 		found = ((long) itr-> second->segbase == (long) segbase);
 		if(found) {
-			//itr-> second.ismapped = 0;
 			segtemp = itr-> second;
             break;
 		}
@@ -120,7 +119,6 @@ rvm_t rvm_init(const char *directory) {
     
     rvm_t rvm;
     rvm.dirpath = directory;
-    rvm.g_tid=0;
     
     // Restores segments from disk, if any.
     restore_segs_from_disk(&rvm);
@@ -243,7 +241,7 @@ void rvm_about_to_modify(trans_t tid, void *segbase, int offset, int size){
     // Make sure that the segment being passed in can be modified - 
     // i.e., it is present in segtracker.
     int found = 0;
-    for(int i=0; i<sizeof(segtracker)/sizeof(segment_t*); i++) {
+    for(size_t i=0; i<sizeof(segtracker)/sizeof(segment_t*); i++) {
         if(segtracker[i] == segbase) {
             found = 1;
             break;
@@ -283,6 +281,9 @@ void rvm_commit_trans(trans_t tid) {
     // Get rid of undo log.
     // redo_map[tid] = std::vector<redo_log*>();
     
+    segment_t **segtracker = (segment_t **) tid;
+    
+    
     
     /*
     for(int i=0; i<undo_map[tid].size(); i++) {
@@ -313,6 +314,8 @@ void rvm_commit_trans(trans_t tid) {
     undo_map.erase(tid);
     */
     
+    delete segtracker;
+    
     printf("Commit Completed\n");
 }
 
@@ -321,6 +324,8 @@ void rvm_commit_trans(trans_t tid) {
  */
 void rvm_abort_trans(trans_t tid){
     printf("Abort started\n");
+    
+    segment_t **segtracker = (segment_t **) tid;
     
     /*
     for(int i=undo_map[tid].size()-1; i>=0; i--) {
@@ -341,6 +346,8 @@ void rvm_abort_trans(trans_t tid){
     // Get rid of undo log.
     undo_map.erase(tid);
     */
+    
+    delete segtracker;
     
     printf("Abort Completed\n");
 }
