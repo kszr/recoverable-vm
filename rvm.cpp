@@ -302,18 +302,17 @@ the changes will be seen by the program when it restarts.
 void rvm_commit_trans(trans_t tid) {
     segment_t **segtracker = (segment_t **) tid;
     // segment_t *seg;
-
-    // Get rid of undo logs.
+    
+    // Infer redo log contents from undo log perhaps?
+    // The first undo log contains the original contents of the file, so skip over it.
+    // Need to encode the current version of the file as a redo log containing its diff with
+    // last undo log???
     for(size_t i=0; i<sizeof(segtracker)/sizeof(segment_t*); i++) {
-        for(auto &ul : segtracker[i]->ul_vector) {
-            if(ul) {
-                if(ul->data) {
-                    free(ul->data);
-                }
-                free(ul);
-            }
+        for(size_t j=1; j<segtracker[i]->ul_vector.size(); j++) {
+            undo_log_t *ul = segtracker[i]->ul_vector[j];
+            
+            // TODO: Implement
         }
-        segtracker[i]->ul_vector.clear();
     }
     
     /*
@@ -348,6 +347,19 @@ void rvm_commit_trans(trans_t tid) {
     // Set segments to not busy.
     for(size_t i=0; i<sizeof(segtracker)/sizeof(segment_t*); i++) {
         segtracker[i]->busy = 0;
+    }
+    
+    // Get rid of undo logs.
+    for(size_t i=0; i<sizeof(segtracker)/sizeof(segment_t*); i++) {
+        for(auto &ul : segtracker[i]->ul_vector) {
+            if(ul) {
+                if(ul->data) {
+                    free(ul->data);
+                }
+                free(ul);
+            }
+        }
+        segtracker[i]->ul_vector.clear();
     }
     
     delete segtracker;
