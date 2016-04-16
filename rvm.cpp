@@ -103,6 +103,15 @@ segment_t *get_segment(rvm_t rvm, void *segbase) {
     return segtemp;
 }
 
+/**
+ * Returns a unique number for a file...
+ * E.g., segname0.seg or segname1023.log.
+ * STUB.
+ */
+int get_unique_file_num(std::string segname, std::string ext) {
+    return 0;
+}
+
 /* =============== END Helper Functions =============== */
 
 /**
