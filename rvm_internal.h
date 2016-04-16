@@ -1,4 +1,5 @@
 #include <map>
+#include <vector>
 
 typedef long trans_t;
 //typedef int rvm_t;
@@ -21,7 +22,7 @@ struct segment_t {
     //char *data;
     int ismapped;
     int busy;
-    undo_log_t *ul;
+    std::vector<undo_log_t*> ul_vector;
     redo_log_t *rl;
 };
 

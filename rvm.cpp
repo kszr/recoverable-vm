@@ -138,14 +138,14 @@ void *rvm_map(rvm_t rvm, const char *segname, int size_to_create) {
 	if (itr != rvm.seg_map.end()) {
         itr->second->segbase = (char*) realloc ((char*)segname, size_to_create);
         itr->second->ismapped = 1;
-        itr->second->ul = NULL;
+        itr->second->ul_vector = vector<undo_log_t*>();
         itr->second->rl = NULL;
         printf("Segment already present\n");
 	} else {
         segment_t *segtemp = (segment_t *) malloc(sizeof(segment_t));
 		segtemp->segbase = (char *) malloc(size_to_create);
 		segtemp->ismapped = 1;
-        segtemp->ul = NULL;
+        segtemp->ul_vector = vector<undo_log_t*>();
         segtemp->rl = NULL;
 		rvm.seg_map[segname] = segtemp;
         
@@ -259,13 +259,6 @@ void rvm_about_to_modify(trans_t tid, void *segbase, int offset, int size){
         return;
     }
     
-    // Multiple calls to about_to_modify() results in overwriting undo log.
-    if(seg->ul){
-        if(seg->ul) {
-            free(seg->ul->data);
-        }
-        free(seg->ul);
-    }
     undo_log_t *ul = (undo_log_t *) malloc(sizeof(undo_log_t));
     ul->segbase = (char *) segbase;
     ul->offset = offset;
@@ -278,12 +271,7 @@ void rvm_about_to_modify(trans_t tid, void *segbase, int offset, int size){
         
     printf("Segment Data in undo log %s\n", ul->data);
     
-    // Store the undo log in the segment being modified.
-    // The assumption is that, while several segments can be modified in a given
-    // transaction, a single segment can be modified only once, so we keep
-    // only one copy of the undo log, which gets overwritten when about_to_modify()
-    // is called multiple times in the same transaction.
-    seg->ul = ul;
+    seg->ul_vector.push_back(ul);
     
     printf("About to Modify Completed\n");
 }
@@ -303,13 +291,15 @@ void rvm_commit_trans(trans_t tid) {
 
     // Get rid of undo logs.
     for(size_t i=0; i<sizeof(segtracker)/sizeof(segment_t*); i++) {
-        if(segtracker[i]->ul){
-            if(segtracker[i]->ul) {
-                free(segtracker[i]->ul->data);
+        for(auto &ul : segtracker[i]->ul_vector) {
+            if(ul) {
+                if(ul->data) {
+                    free(ul->data);
+                }
+                free(ul);
             }
-            free(segtracker[i]->ul);
         }
-        segtracker[i]->ul = NULL;
+        segtracker[i]->ul_vector.clear();
     }
     
     /*
