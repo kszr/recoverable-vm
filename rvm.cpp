@@ -11,7 +11,6 @@
 #include <map>
 #include <dirent.h>
 
-using namespace std;
 //static trans_t tid;
 // static std::vector<const char*> rvm_vector;
 // static std::map<const char*, segment_t*> seg_map;
@@ -71,8 +70,8 @@ static std::vector<std::string> get_log_files(std::string segname) {
         }
     }
     
-    // Not sure how necessary this is. Given that alphabetical sort as opposed to numerical sort
-    // of log file numbers may give us trouble in any case, it's probably just as well that we do this.
+    // Make sure log files are sorted by increasing number. Have to do this to avoid
+    // sorting numbers alphabetically.
     std::sort(vec.begin(), vec.end(), 
         [](std::pair<int, std::string> const &a, std::pair<int, std::string> const &b) {
         return a.first < b.first; 
@@ -151,7 +150,7 @@ static int get_unique_file_num(std::string segname, std::string ext) {
  */
 static void write_to_file(char *data, std::string segname, std::string ext) {
     int num = get_unique_file_num(segname, ext);
-    ofstream outputFile(segname + std::to_string(num) + "." + ext);
+    std::ofstream outputFile(segname + std::to_string(num) + "." + ext);
     std::cout << data;
     outputFile.close();
 }
@@ -168,7 +167,7 @@ rvm_t rvm_init(const char *directory) {
     std::string buf = "mkdir " + std::string(directory);
     system(buf.c_str());
     
-    rvm_s *rvm = (rvm_s *) malloc(sizeof(rvm_s));
+    rvm_s *rvm = new rvm_s;
     rvm->seg_map = std::map<const char*, segment_t*>();
     rvm->dirpath = directory;
     
@@ -190,19 +189,18 @@ void *rvm_map(rvm_t rvm, const char *segname, int size_to_create) {
     std::map<const char*, segment_t*>::iterator itr;
 	itr = rvm->seg_map.find(segname);
 	if (itr != rvm->seg_map.end()) {
-        itr->second->segbase = (char*) realloc ((char*)segname, size_to_create);
+        itr->second->segbase = (char*) realloc ((char*) itr->second->segbase, size_to_create);
         itr->second->ismapped = 1;
         itr->second->ul_vector = std::vector<undo_log_t*>();
         itr->second->rl = NULL;
         printf("Segment already present\n");
 	} else {
-        segment_t *segtemp = (segment_t *) malloc(sizeof(segment_t));
+        segment_t *segtemp = new segment_t;
 		segtemp->segbase = (char *) malloc(size_to_create);
 		segtemp->ismapped = 1;
         segtemp->ul_vector = std::vector<undo_log_t*>();
         segtemp->rl = NULL;
 		rvm->seg_map[segname] = segtemp;
-        
         std::string buf = "touch " + std::string(segname) + ".seg";
         system(buf.c_str());
         
@@ -247,6 +245,8 @@ void rvm_destroy(rvm_t rvm, const char *segname) {
     
     if(curr->segbase)
         free((void *) curr->segbase);
+    
+    delete curr;
     
     std::string buf = "rm " + std::string(segname) + ".seg";
     system(buf.c_str());
@@ -355,7 +355,7 @@ void rvm_commit_trans(trans_t tid) {
     for(size_t i=0; i<sizeof(segtracker)/sizeof(segment_t*); i++) {
         for(size_t j=1; j<segtracker[i]->ul_vector.size(); j++) {
             undo_log_t *ul = segtracker[i]->ul_vector[j];
-            
+            printf("Unimplemented commit\n");
             // TODO: Implement
         }
     }
@@ -417,7 +417,7 @@ void rvm_commit_trans(trans_t tid) {
  */
 void rvm_abort_trans(trans_t tid) {
     printf("Abort started\n");
-    
+    return;
     segment_t **segtracker = (segment_t **) tid;
     
     /*
