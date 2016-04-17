@@ -71,6 +71,8 @@ static std::vector<std::string> get_log_files(std::string segname) {
         }
     }
     
+    // Not sure how necessary this is. Given that alphabetical sort as opposed to numerical sort
+    // of log file numbers may give us trouble in any case, it's probably just as well that we do this.
     std::sort(vec.begin(), vec.end(), 
         [](std::pair<int, std::string> const &a, std::pair<int, std::string> const &b) {
         return a.first < b.first; 
