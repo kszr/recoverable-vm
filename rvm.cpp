@@ -185,19 +185,21 @@ rvm_t rvm_init(const char *directory) {
 */
 void *rvm_map(rvm_t rvm, const char *segname, int size_to_create) {
 	//compare segname with segnames data structure
+    printf("Begin map\n");
+    
     std::map<const char*, segment_t*>::iterator itr;
 	itr = rvm->seg_map.find(segname);
 	if (itr != rvm->seg_map.end()) {
         itr->second->segbase = (char*) realloc ((char*)segname, size_to_create);
         itr->second->ismapped = 1;
-        itr->second->ul_vector = vector<undo_log_t*>();
+        itr->second->ul_vector = std::vector<undo_log_t*>();
         itr->second->rl = NULL;
         printf("Segment already present\n");
 	} else {
         segment_t *segtemp = (segment_t *) malloc(sizeof(segment_t));
 		segtemp->segbase = (char *) malloc(size_to_create);
 		segtemp->ismapped = 1;
-        segtemp->ul_vector = vector<undo_log_t*>();
+        segtemp->ul_vector = std::vector<undo_log_t*>();
         segtemp->rl = NULL;
 		rvm->seg_map[segname] = segtemp;
         
@@ -206,7 +208,7 @@ void *rvm_map(rvm_t rvm, const char *segname, int size_to_create) {
         
 		printf("New Segment created\n");
 	}
-    
+
     printf("Printing Segnames\n");
     
     for(itr = rvm->seg_map.begin();itr != rvm->seg_map.end(); ++itr) {
@@ -233,9 +235,10 @@ void rvm_unmap(rvm_t rvm, void *segbase) {
  */
 void rvm_destroy(rvm_t rvm, const char *segname) {
     printf("Destroy started\n");
+
     if(rvm->seg_map.count(segname) == 0)
         return;
-        
+   
     segment_t *curr = rvm->seg_map[segname];
     
     if(!curr->ismapped)
@@ -257,7 +260,7 @@ void rvm_destroy(rvm_t rvm, const char *segname) {
   then the call should fail and return (trans_t) -1.
   Note that trant_t needs to be able to be typecasted to an integer type.
  */
-trans_t rvm_begin_trans(rvm_t rvm, int numsegs, void **segbases) {
+trans_t rvm_begin_trans(rvm_t rvm, int numsegs, void **segbases) {    
     std::map<const char*, segment_t*>::iterator itr;
     
     printf("Printing segnames in begin_transaction\n");
@@ -445,7 +448,7 @@ void rvm_abort_trans(trans_t tid) {
 /*
  play through any committed or aborted items in the log file(s) and shrink the log file(s) as much as possible.
 */
-void rvm_truncate_log(rvm_t rvm){
+void rvm_truncate_log(rvm_t rvm) {
 	printf("Truncating\n");
     std::map<const char*, segment_t*>::iterator itr;
     for(itr = rvm->seg_map.begin();itr != rvm->seg_map.end(); ++itr) {
