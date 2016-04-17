@@ -60,6 +60,31 @@ static std::vector<std::string> get_file_list(std::string dirpath, std::string e
 }
 
 /**
+ * Returns all log files corresponding to a given segment.
+ */
+static std::vector<std::string> get_log_files(std::string segname) {
+    std::vector<std::pair<int, std::string> > vec;
+    for(auto &f : get_file_list("./", "log")) {
+        if(f.find(segname) == 0) {
+            int i = std::stoi(f.substr(segname.length(), f.length() - segname.length() - 4));
+            vec.push_back(std::pair<int, std::string>(i, f));
+        }
+    }
+    
+    std::sort(vec.begin(), vec.end(), 
+        [](std::pair<int, std::string> const &a, std::pair<int, std::string> const &b) {
+        return a.first < b.first; 
+    });
+    
+    std::vector<std::string> new_vec = std::vector<std::string>();
+    for(auto &p : vec) {
+        new_vec.push_back(p.second);
+    }
+    
+    return new_vec;
+}
+
+/**
  * Gets the base name of a file from its filename. Ext must not 
  * contain the '.' character.
  */
@@ -109,7 +134,7 @@ static segment_t *get_segment(rvm_t rvm, void *segbase) {
  * Returns a unique number for a file...
  * E.g., segname0.seg or segname1023.log.
  */
-int get_unique_file_num(std::string segname, std::string ext) {
+static int get_unique_file_num(std::string segname, std::string ext) {
     std::vector<std::string> file_list = get_file_list("./",ext);
     std::vector<std::string> counter;
     for(auto &f : file_list)
@@ -122,7 +147,7 @@ int get_unique_file_num(std::string segname, std::string ext) {
  * Writes data to a file, given segname and ext (e.g., "seg" or "log"). Note
  * ext does not contain the '.' character.
  */
-void write_to_file(char *data, std::string segname, std::string ext) {
+static void write_to_file(char *data, std::string segname, std::string ext) {
     int num = get_unique_file_num(segname, ext);
     ofstream outputFile(segname + std::to_string(num) + "." + ext);
     std::cout << data;
@@ -420,5 +445,18 @@ void rvm_abort_trans(trans_t tid) {
 */
 void rvm_truncate_log(rvm_t rvm){
 	printf("Truncating\n");
-
+    std::map<const char*, segment_t*>::iterator itr;
+    for(itr = rvm->seg_map.begin();itr != rvm->seg_map.end(); ++itr) {
+        const char *segname = itr->first;
+        // TODO: Load segment from file.
+        
+        std::vector<std::string> log_list = get_log_files(segname);
+        for(auto &lg : log_list) {
+            // TODO: Apply log files to the segment.
+        }
+        
+        // TODO: Write updated segment back into file.
+        
+        // TODO: Delete log files.
+    }
 }
