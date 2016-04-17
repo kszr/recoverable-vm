@@ -118,6 +118,17 @@ int get_unique_file_num(std::string segname, std::string ext) {
     return counter.size();
 }
 
+/**
+ * Writes data to a file, given segname and ext (e.g., "seg" or "log"). Note
+ * ext does not contain the '.' character.
+ */
+void write_to_file(char *data, std::string segname, std::string ext) {
+    int num = get_unique_file_num(segname, ext);
+    ofstream outputFile(segname + std::to_string(num) + "." + ext);
+    std::cout << data;
+    outputFile.close();
+}
+
 /* =============== END Helper Functions =============== */
 
 /**
@@ -202,8 +213,10 @@ void rvm_destroy(rvm_t rvm, const char *segname) {
     
     if(!curr->ismapped)
         rvm->seg_map.erase(segname);
+    else return;
     
-    free((void *) curr->segbase);
+    if(curr->segbase)
+        free((void *) curr->segbase);
     
     std::string buf = "rm " + std::string(segname) + ".seg";
     system(buf.c_str());
@@ -219,10 +232,12 @@ void rvm_destroy(rvm_t rvm, const char *segname) {
  */
 trans_t rvm_begin_trans(rvm_t rvm, int numsegs, void **segbases) {
     std::map<const char*, segment_t*>::iterator itr;
+    
     printf("Printing segnames in begin_transaction\n");
-        for(itr = rvm->seg_map.begin();itr != rvm->seg_map.end(); ++itr) {
+    for(itr = rvm->seg_map.begin();itr != rvm->seg_map.end(); ++itr) {
         std::cout << itr->first << "\n";
     }
+    
     // Initial check to see if any of the segments is being modified.
     for(int i=0; i<numsegs; i++) {
         segment_t *segtemp = get_segment(rvm, segbases[i]);
@@ -306,7 +321,7 @@ void rvm_commit_trans(trans_t tid) {
     // Infer redo log contents from undo log perhaps?
     // The first undo log contains the original contents of the file, so skip over it.
     // Need to encode the current version of the file as a redo log containing its diff with
-    // last undo log???
+    // gilast undo log???
     for(size_t i=0; i<sizeof(segtracker)/sizeof(segment_t*); i++) {
         for(size_t j=1; j<segtracker[i]->ul_vector.size(); j++) {
             undo_log_t *ul = segtracker[i]->ul_vector[j];
