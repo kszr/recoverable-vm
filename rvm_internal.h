@@ -1,5 +1,6 @@
 #include <map>
 #include <vector>
+#include <string>
 
 typedef long trans_t;
 
@@ -14,21 +15,23 @@ struct undo_log_t {
 
 struct redo_log_t {
     char *segbase;
-    char *metadata;
+    char *data;
     int offset;
 };
 
 struct segment_t {
+    std::string segname;
+    std::string dirpath;
+    size_t size;
     char* segbase;
-    //char *data;
     int ismapped;
     int busy;
     std::vector<undo_log_t*> ul_vector;
-    redo_log_t *rl;
+    std::vector<redo_log_t*> rl_vector;
 };
 
  struct rvm_s {
- 	const char *dirpath;   // Directory that this rvm_t instance is responsible for.
+ 	std::string dirpath;   // Directory that this rvm_t instance is responsible for.
     char *log_file;
     std::map<const char*, segment_t*> seg_map; // Keeps track of all segments maintained by this instance.
  };
