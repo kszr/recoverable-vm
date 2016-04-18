@@ -127,15 +127,15 @@ static segment_t *get_segment(rvm_t rvm, void *segbase) {
     std::map<const char*, segment_t*>::iterator itr;
     int found = 0;
     segment_t *segtemp = NULL;
-	itr = rvm->seg_map.begin();
-	while(itr != rvm->seg_map.end()) {
-		found = ((long) itr-> second->segbase == (long) segbase);
-		if(found) {
-			segtemp = itr-> second;
+    itr = rvm->seg_map.begin();
+    while(itr != rvm->seg_map.end()) {
+        found = ((long) itr-> second->segbase == (long) segbase);
+        if(found) {
+            segtemp = itr-> second;
             break;
-		}
-		itr++;
-	}
+        }
+        itr++;
+    }
     return segtemp;
 }
 
@@ -152,9 +152,11 @@ static int get_unique_file_num(std::string dirpath, std::string segname, std::st
     
     std::vector<std::string> file_list = get_file_list(dirpath,ext);
     std::vector<std::string> counter;
+    
     for(auto &f : file_list)
         if(f.find(segname) != std::string::npos)
             counter.push_back(f);
+            
     return counter.size();
 }
 
