@@ -154,7 +154,7 @@ static int get_unique_file_num(std::string dirpath, std::string segname, std::st
     std::vector<std::string> counter;
     
     for(auto &f : file_list)
-        if(f.find(segname) != std::string::npos)
+        if(f.find(segname + "_") != std::string::npos)
             counter.push_back(f);
             
     return counter.size();
@@ -418,7 +418,7 @@ void rvm_commit_trans(trans_t tid) {
             
             // Write the redo log to a file.
             int num = get_unique_file_num(seg->dirpath, seg->segname, "log");
-            std::string filename = seg->dirpath + seg->segname + std::to_string(num) + ".log";
+            std::string filename = seg->dirpath + seg->segname + "_" + std::to_string(num) + ".log";
             
             std::ofstream outputFile(filename);
             outputFile << rl.offset << std::endl;
