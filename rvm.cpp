@@ -532,5 +532,5 @@ void rvm_truncate_log(rvm_t rvm) {
         // TODO: Write updated segment back into file.
         
         // TODO: Delete log files.
-    }
+      }
 }
