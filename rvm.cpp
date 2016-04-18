@@ -177,25 +177,25 @@ static int get_unique_file_num(std::string dirpath, std::string segname, std::st
  */
 rvm_t rvm_init(const char *directory) {
     printf("Init started\n");
-    
+
     rvm_s *rvm = new rvm_s;
     rvm->seg_map = std::map<const char*, segment_t*>();
     rvm->dirpath = directory;
-    
+
     if(sizeof(directory)/sizeof(char) < 1)
         rvm->dirpath = "./";
-        
+
     if(rvm->dirpath[rvm->dirpath.length()-1] != '/')
         rvm->dirpath = rvm->dirpath + "/";
-    
+
     std::string buf = "mkdir " + rvm->dirpath;
     system(buf.c_str());
-    
+
     // Restores segments from disk, if any.
     restore_segs_from_disk(rvm);
-    
-     std::map<const char*, segment_t*>::iterator itr;
-        printf("Printing segnames in rvm_init\n");
+
+    std::map<const char*, segment_t*>::iterator itr;
+    printf("Printing segnames in rvm_init\n");
     std::cout << "Seg map size = " << rvm->seg_map.size() << std::endl;
     for(itr = rvm->seg_map.begin(); itr != rvm->seg_map.end(); ++itr) {
         std::cout << itr->first << ".....BOB!" << "\n";
@@ -210,54 +210,54 @@ rvm_t rvm_init(const char *directory) {
   It is an error to try to map the same segment twice.
 */
 void *rvm_map(rvm_t rvm, const char *segname, int size_to_create) {
-	//compare segname with segnames data structure
+    //compare segname with segnames data structure
     printf("Begin map\n");
-    
+
     std::map<const char*, segment_t*>::iterator itr;
-	itr = rvm->seg_map.find(segname);
-	if (itr != rvm->seg_map.end()) {
+    itr = rvm->seg_map.find(segname);
+    if (itr != rvm->seg_map.end()) {
         itr->second->segbase = (char*) realloc ((char*) itr->second->segbase, size_to_create);
         itr->second->size = size_to_create;
         itr->second->ismapped = 1;
         itr->second->ul_vector = std::vector<undo_log_t*>();
         itr->second->rl_vector = std::vector<redo_log_t*>();
-        
+
         printf("Segment already present\n");
-	} else {
+    } else {
         segment_t *segtemp = new segment_t;
-		segtemp->segbase = (char *) malloc(size_to_create);
-		segtemp->ismapped = 1;
+        segtemp->segbase = (char *) malloc(size_to_create);
+        segtemp->ismapped = 1;
         segtemp->segname = segname;
         segtemp->size = size_to_create;
         segtemp->dirpath = rvm->dirpath;
         segtemp->ul_vector = std::vector<undo_log_t*>();
         segtemp->rl_vector = std::vector<redo_log_t*>();
-		rvm->seg_map[segname] = segtemp;
-        
+        rvm->seg_map[segname] = segtemp;
+
         std::string buf = "touch " + rvm->dirpath + std::string(segname) + ".seg";
         system(buf.c_str());
-        
-		printf("New Segment created\n");
-	}
+
+        printf("New Segment created\n");
+    }
 
     printf("Printing Segnames\n");
-    
+
     for(itr = rvm->seg_map.begin();itr != rvm->seg_map.end(); ++itr) {
         std::cout << itr->first << "\n";
     }
-    
-	return (void *) rvm->seg_map[segname]->segbase;
+
+    return (void *) rvm->seg_map[segname]->segbase;
 }
 
 /*
   unmap a segment from memory.
 */
 void rvm_unmap(rvm_t rvm, void *segbase) {
-	segment_t *segtemp = get_segment(rvm, segbase);
-	if  (segtemp != NULL) {
-		segtemp->ismapped = 0;
-	}
-	
+    segment_t *segtemp = get_segment(rvm, segbase);
+    if  (segtemp != NULL) {
+        segtemp->ismapped = 0;
+    }
+
     printf("Unmap Completed\n");
 }
 
@@ -269,18 +269,18 @@ void rvm_destroy(rvm_t rvm, const char *segname) {
 
     if(rvm->seg_map.count(segname) == 0)
         return;
-   
+
     segment_t *curr = rvm->seg_map[segname];
-    
+
     if(!curr->ismapped)
         rvm->seg_map.erase(segname);
     else return;
-    
+
     if(curr->segbase)
         free((void *) curr->segbase);
-    
+
     delete curr;
-    
+
     std::string buf = "rm " + std::string(segname) + ".seg";
     system(buf.c_str());
 
@@ -295,13 +295,13 @@ void rvm_destroy(rvm_t rvm, const char *segname) {
  */
 trans_t rvm_begin_trans(rvm_t rvm, int numsegs, void **segbases) {    
     std::map<const char*, segment_t*>::iterator itr;
-    
+
     printf("Printing segnames in begin_transaction\n");
     std::cout << "Seg map size = " << rvm->seg_map.size() << std::endl;
     for(itr = rvm->seg_map.begin(); itr != rvm->seg_map.end(); ++itr) {
         std::cout << itr->first << ".....BOB!" << "\n";
     }
-    
+
     // Initial check to see if any of the segments is being modified.
     for(int i=0; i<numsegs; i++) {
         segment_t *segtemp = get_segment(rvm, segbases[i]);
@@ -312,7 +312,7 @@ trans_t rvm_begin_trans(rvm_t rvm, int numsegs, void **segbases) {
     }
     
     std::vector<segment_t*> *segtracker = new std::vector<segment_t*>(numsegs);
-    
+
     // Maintain an array in memory that keeps track of which segments are being
     // prepped for a transaction. Disguise the pointer to this array as tid
     // so that it can be referenced just by passing tid to a function.
@@ -321,9 +321,9 @@ trans_t rvm_begin_trans(rvm_t rvm, int numsegs, void **segbases) {
         (*segtracker)[i] = segtemp;
         segtemp->busy = 1;
     }
-            
+        
     printf("Begin Transaction Completed\n");
-    
+
     return (trans_t) segtracker;
 }
 
@@ -335,11 +335,11 @@ trans_t rvm_begin_trans(rvm_t rvm, int numsegs, void **segbases) {
 */
 void rvm_about_to_modify(trans_t tid, void *segbase, int offset, int size) {
     printf("About to Modify started with segbase %lu\n", (long) segbase);
-    
+
     std::vector<segment_t*> *segtracker = (std::vector<segment_t*> *) tid;
     // segment_t **segtracker = (segment_t **) tid;
     segment_t *seg = NULL;
-    
+
     // Make sure that the segment being passed in can be modified - 
     // i.e., it is present in segtracker.
     int found = 0;
@@ -359,18 +359,18 @@ void rvm_about_to_modify(trans_t tid, void *segbase, int offset, int size) {
     undo_log_t *ul = new undo_log_t;
     ul->segbase = (char *) segbase;
     ul->offset = offset;
-    
+
     printf("Segment Data in About to Modify %s\n", (char*)(segbase));
 
     ul->data = (char *) malloc(size);
-    
+
     if(segbase && offset+size < seg->size)
         memcpy(ul->data, (char *) segbase + offset, size);
-        
+
     printf("Segment Data in undo log %s\n", ul->data);
-    
+
     seg->ul_vector.push_back(ul);
-    
+
     printf("About to Modify Completed\n");
 }
 
