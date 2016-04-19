@@ -116,7 +116,7 @@ static void restore_segs_from_disk(rvm_s *rvm) {
         seg->ul_vector = std::vector<undo_log_t*>();
         seg->rl_vector = std::vector<redo_log_t*>();
         seg->size = sizeof(data)/sizeof(char);
-        rvm->seg_map[segname.c_str()] = seg;
+        rvm->seg_map[seg->segname.c_str()] = seg;
     }
 }
 
@@ -245,7 +245,7 @@ void *rvm_map(rvm_t rvm, const char *segname, int size_to_create) {
     printf("Printing Segnames\n");
 
     for(itr = rvm->seg_map.begin();itr != rvm->seg_map.end(); ++itr) {
-        std::cout << itr->first << "\n";
+        std::cout << "[" << itr->first << "]\n";
     }
 
     return (void *) rvm->seg_map[segname]->segbase;
