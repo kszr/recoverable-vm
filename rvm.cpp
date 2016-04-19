@@ -195,13 +195,7 @@ rvm_t rvm_init(const char *directory) {
 
     // Restores segments from disk, if any.
     restore_segs_from_disk(rvm);
-
-    std::map<std::string, segment_t*>::iterator itr;
-    printf("Printing segnames in rvm_init\n");
-    std::cout << "Seg map size = " << rvm->seg_map.size() << std::endl;
-    for(itr = rvm->seg_map.begin(); itr != rvm->seg_map.end(); ++itr) {
-        std::cout << itr->first << ".....BOB!" << "\n";
-    }
+    
     return (rvm_t) rvm;
 }
 
