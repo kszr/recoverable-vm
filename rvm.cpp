@@ -234,8 +234,8 @@ void *rvm_map(rvm_t rvm, const char *segname, int size_to_create) {
         char *ptr = segtemp->segbase;
         for(int i=0; i<segtemp->size; i++) {
             // outputFile << *(ptr++);
-            outputFile << '0';
-            segtemp->segbase[i] = '0';
+            outputFile << '\0';
+            segtemp->segbase[i] = '\0';
         }
         outputFile << '\0';
         segtemp->segbase[size_to_create] = '\0';
@@ -378,13 +378,13 @@ void rvm_about_to_modify(trans_t tid, void *segbase, int offset, int size) {
     
     // Populate ul->data the old-fashioned way.
     char *ptr1 = ul->data;
-    char *ptr2 = (char *) segbase;
+    char *ptr2 = (char *) segbase + offset;
     for(int i=0; i<size; i++)
         *(ptr1++) = *(ptr2++);
     ul->data[size] = '\0';
 
     // === Printing data ===
-    std::cout << "Undo log data = ";
+    std::cout << "Undo log data for segment " << seg->segname << " at offset " << offset << std::endl;
     for(int i=0; i<size; i++)
         std::cout << ul->data[i];
     std::cout << std::endl;
@@ -405,10 +405,8 @@ void rvm_commit_trans(trans_t tid) {
     
     std::vector<segment_t*> *segtracker = (std::vector<segment_t*> *) tid;
     
-    // Infer redo log contents from undo log perhaps?
+    // Infer redo log contents from undo log.
     // The first undo log contains the original contents of the file, so skip over it.
-    // Need to encode the current version of the file as a redo log containing its diff with
-    // gilast undo log???
     for(size_t i=0; i<(*segtracker).size(); i++) {
         segment_t *seg = (*segtracker)[i];
         
@@ -459,7 +457,7 @@ void rvm_commit_trans(trans_t tid) {
             std::cout << std::endl;
             
             // Garbage collection. ul->data will be deleted later for other j.
-            if(j<seg->ul_vector.size()-1)
+            if(j>=seg->ul_vector.size()-1)
                 delete rl.data;
         }
     }
@@ -494,20 +492,18 @@ void rvm_commit_trans(trans_t tid) {
  */
 void rvm_abort_trans(trans_t tid) {
     printf("Abort started\n");
-    return;
-    // segment_t **segtracker = (segment_t **) tid;
     
     std::vector<segment_t*> *segtracker = (std::vector<segment_t*> *) tid;
-    
+
     for(auto &seg : *segtracker) {
         // Copy data from undo logs in the reverse of the order in which they were created.
         for(int i=seg->ul_vector.size()-1; i>=0; i--) {
             undo_log_t *ul = seg->ul_vector[i];
-            char *ptr1 = seg->segbase + ul->offset;
+            char *ptr1 = (char *) seg->segbase + ul->offset;
             char *ptr2 = ul->data;
             
             for(int j=0; j<ul->size; j++)
-                *(ptr1++) = *(ptr2++);
+                *(ptr1++) = *(ptr2++); 
                 
             delete ul->data;
             delete ul;
@@ -515,7 +511,7 @@ void rvm_abort_trans(trans_t tid) {
     }
 
     delete segtracker;
-    
+
     printf("Abort Completed\n");
 }
 
