@@ -210,7 +210,7 @@ void *rvm_map(rvm_t rvm, const char *segname, int size_to_create) {
     std::map<std::string, segment_t*>::iterator itr;
     itr = rvm->seg_map.find(std::string(segname));
     if (itr != rvm->seg_map.end()) {
-        itr->second->segbase = (char*) realloc ((char*) itr->second->segbase, size_to_create*sizeof(char));
+        itr->second->segbase = (char*) realloc ((char*) itr->second->segbase, size_to_create*sizeof(char)+1);
         itr->second->size = size_to_create;
         itr->second->ismapped = 1;
         itr->second->ul_vector = std::vector<undo_log_t*>();
@@ -219,7 +219,7 @@ void *rvm_map(rvm_t rvm, const char *segname, int size_to_create) {
         printf("Segment already present\n");
     } else {
         segment_t *segtemp = new segment_t;
-        segtemp->segbase = (char *) malloc(size_to_create*sizeof(char));
+        segtemp->segbase = (char *) malloc(size_to_create*sizeof(char)+1);
         segtemp->ismapped = 1;
         segtemp->segname = segname;
         segtemp->size = size_to_create;
@@ -228,9 +228,19 @@ void *rvm_map(rvm_t rvm, const char *segname, int size_to_create) {
         segtemp->rl_vector = std::vector<redo_log_t*>();
         rvm->seg_map[segtemp->segname] = segtemp;
 
-        std::string buf = "touch " + rvm->dirpath + std::string(segname) + ".seg";
-        system(buf.c_str());
-
+        // Writes the contents of the segment to disk.
+        std::string filename = rvm->dirpath + std::string(segname) + ".seg";
+        std::ofstream outputFile(filename);
+        char *ptr = segtemp->segbase;
+        for(int i=0; i<segtemp->size; i++) {
+            // outputFile << *(ptr++);
+            outputFile << '0';
+            segtemp->segbase[i] = '0';
+        }
+        outputFile << '\0';
+        segtemp->segbase[size_to_create] = '\0';
+        outputFile.close();
+        
         printf("New Segment created\n");
     }
 
