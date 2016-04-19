@@ -16,7 +16,7 @@
 /**
  * Reads from the file specified by filepath and returns its contents as a string.
  */ 
-static char *read_from_file(std::string filepath) {
+static char *read_from_file(std::string filepath, size_t *segsize) {
     std::ifstream t;
     int length;
     t.open(filepath);                   // open input file
@@ -26,6 +26,7 @@ static char *read_from_file(std::string filepath) {
     char *buffer = new char[length];    // allocate memory for a buffer of appropriate dimension
     t.read(buffer, length);             // read the whole file into the buffer
     t.close();                          // close file handle
+    *segsize = length - 1;
     return buffer;
 }
 
@@ -99,18 +100,17 @@ static void restore_segs_from_disk(rvm_s *rvm) {
     for(auto &file : seg_files) {
         std::string segname = get_base_name(file, "seg");
         segment_t *seg = new segment_t;
-        char *data = read_from_file(rvm->dirpath + file);
-        seg->segbase = (char *) malloc(sizeof(data)/sizeof(char));
-        if(data)
-            sprintf(seg->segbase, data);
+        printf("Here\n");
+        seg->segbase = read_from_file(rvm->dirpath + file, &seg->size);
         seg->ismapped = 0;
         seg->dirpath = rvm->dirpath;
         seg->segname = segname;
         seg->ul_vector = std::vector<undo_log_t*>();
         seg->rl_vector = std::vector<redo_log_t*>();
-        seg->size = sizeof(data)/sizeof(char);
         rvm->seg_map[seg->segname.c_str()] = seg;
     }
+    
+    printf("Done restoring segments from disk\n");
 }
 
 /*
@@ -474,7 +474,6 @@ void rvm_commit_trans(trans_t tid) {
         for(size_t j=0; j<(*segtracker)[i]->ul_vector.size(); j++) {
             undo_log_t *ul = (*segtracker)[i]->ul_vector[j];
             if(ul) {
-                // Don't free all ul->data, since redo log is referencing it. Except for j==0.
                 if(ul->data)
                     delete ul->data;
                 delete ul;
@@ -499,26 +498,22 @@ void rvm_abort_trans(trans_t tid) {
     // segment_t **segtracker = (segment_t **) tid;
     
     std::vector<segment_t*> *segtracker = (std::vector<segment_t*> *) tid;
-    /*
-    for(int i=undo_map[tid].size()-1; i>=0; i--) {
-        undo_log *ul = undo_map[tid][i];
-        segment *seg = get_segment(ul->segbase);
-        
-        // Copy from undo log into segment.
-        if(ul->data)
-            memcpy(seg->segbase+ul->offset,ul->data,sizeof(ul->data)/sizeof(ul->data[0]));
-        
-        // Set busy to false
-        seg->busy = 0;
-        
-        undo_map[tid].pop_back();
-        free(ul);
-    }   
-            
-    // Get rid of undo log.
-    undo_map.erase(tid);
-    */
     
+    for(auto &seg : *segtracker) {
+        // Copy data from undo logs in the reverse of the order in which they were created.
+        for(int i=seg->ul_vector.size()-1; i>=0; i--) {
+            undo_log_t *ul = seg->ul_vector[i];
+            char *ptr1 = seg->segbase + ul->offset;
+            char *ptr2 = ul->data;
+            
+            for(int j=0; j<ul->size; j++)
+                *(ptr1++) = *(ptr2++);
+                
+            delete ul->data;
+            delete ul;
+        }
+    }
+
     delete segtracker;
     
     printf("Abort Completed\n");

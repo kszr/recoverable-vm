@@ -37,6 +37,7 @@ int main(int argc, char **argv)
      rvm_commit_trans(trans);
 
      /* start writing some different data, but abort */
+     printf("HERE\n");
      trans = rvm_begin_trans(rvm, 1, (void**) segs);
      rvm_about_to_modify(trans, seg, 0, 100);
      sprintf(seg, TEST_STRING2);
