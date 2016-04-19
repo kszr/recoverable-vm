@@ -276,9 +276,25 @@ void rvm_destroy(rvm_t rvm, const char *segname) {
         free((void *) curr->segbase);
 
     delete curr;
-
-    std::string buf = "rm " + std::string(segname) + ".seg";
-    system(buf.c_str());
+    
+    std::vector<std::string> seg_list = get_file_list(rvm->dirpath, "seg");
+    for(auto &f : seg_list) {
+        int i;
+        if( (i = f.find(segname)) != std::string::npos && f.at(i+sizeof(segname)/sizeof(char)-1) == '.') {
+            std::string buf = "rm " + rvm->dirpath + f;
+            system(buf.c_str());
+        }
+    }
+    
+    // Also remove any log files associated with this segment.
+    std::vector<std::string> log_list = get_file_list(rvm->dirpath, "log");
+    for(auto &f : log_list) {
+        int i;
+        if( (i = f.find(segname)) != std::string::npos && f.at(i+sizeof(segname)/sizeof(char)-1) == '_') {
+            std::string buf = "rm " + rvm->dirpath + f;
+            system(buf.c_str());
+        }
+    }
 
     printf("Destroy Completed\n");
 }
