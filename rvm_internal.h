@@ -31,7 +31,7 @@ struct segment_t {
  struct rvm_s {
  	std::string dirpath;   // Directory that this rvm_t instance is responsible for.
     char *log_file;
-    std::map<const char*, segment_t*> seg_map; // Keeps track of all segments maintained by this instance.
+    std::map<std::string, segment_t*> seg_map; // Keeps track of all segments maintained by this instance.
  };
  
  typedef rvm_s* rvm_t; // This is so we can create objects on the heap in order to make them available between functions in a process.

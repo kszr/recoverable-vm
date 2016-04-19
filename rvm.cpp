@@ -124,7 +124,7 @@ static void restore_segs_from_disk(rvm_s *rvm) {
   Returns the segment, if any, associated with addr segbase.
 */
 static segment_t *get_segment(rvm_t rvm, void *segbase) {
-    std::map<const char*, segment_t*>::iterator itr;
+    std::map<std::string, segment_t*>::iterator itr;
     int found = 0;
     segment_t *segtemp = NULL;
     itr = rvm->seg_map.begin();
@@ -181,7 +181,7 @@ rvm_t rvm_init(const char *directory) {
     printf("Init started\n");
 
     rvm_s *rvm = new rvm_s;
-    rvm->seg_map = std::map<const char*, segment_t*>();
+    rvm->seg_map = std::map<std::string, segment_t*>();
     rvm->dirpath = directory;
 
     if(sizeof(directory)/sizeof(char) < 1)
@@ -196,7 +196,7 @@ rvm_t rvm_init(const char *directory) {
     // Restores segments from disk, if any.
     restore_segs_from_disk(rvm);
 
-    std::map<const char*, segment_t*>::iterator itr;
+    std::map<std::string, segment_t*>::iterator itr;
     printf("Printing segnames in rvm_init\n");
     std::cout << "Seg map size = " << rvm->seg_map.size() << std::endl;
     for(itr = rvm->seg_map.begin(); itr != rvm->seg_map.end(); ++itr) {
@@ -215,8 +215,8 @@ void *rvm_map(rvm_t rvm, const char *segname, int size_to_create) {
     //compare segname with segnames data structure
     printf("Begin map\n");
 
-    std::map<const char*, segment_t*>::iterator itr;
-    itr = rvm->seg_map.find(segname);
+    std::map<std::string, segment_t*>::iterator itr;
+    itr = rvm->seg_map.find(std::string(segname));
     if (itr != rvm->seg_map.end()) {
         itr->second->segbase = (char*) realloc ((char*) itr->second->segbase, size_to_create);
         itr->second->size = size_to_create;
@@ -234,7 +234,7 @@ void *rvm_map(rvm_t rvm, const char *segname, int size_to_create) {
         segtemp->dirpath = rvm->dirpath;
         segtemp->ul_vector = std::vector<undo_log_t*>();
         segtemp->rl_vector = std::vector<redo_log_t*>();
-        rvm->seg_map[segname] = segtemp;
+        rvm->seg_map[segtemp->segname] = segtemp;
 
         std::string buf = "touch " + rvm->dirpath + std::string(segname) + ".seg";
         system(buf.c_str());
@@ -296,7 +296,7 @@ void rvm_destroy(rvm_t rvm, const char *segname) {
   Note that trant_t needs to be able to be typecasted to an integer type.
  */
 trans_t rvm_begin_trans(rvm_t rvm, int numsegs, void **segbases) {    
-    std::map<const char*, segment_t*>::iterator itr;
+    std::map<std::string, segment_t*>::iterator itr;
 
     printf("Printing segnames in begin_transaction\n");
     std::cout << "Seg map size = " << rvm->seg_map.size() << std::endl;
@@ -521,9 +521,9 @@ void rvm_abort_trans(trans_t tid) {
 */
 void rvm_truncate_log(rvm_t rvm) {
 	printf("Truncating\n");
-    std::map<const char*, segment_t*>::iterator itr;
+    std::map<std::string, segment_t*>::iterator itr;
     for(itr = rvm->seg_map.begin();itr != rvm->seg_map.end(); ++itr) {
-        const char *segname = itr->first;
+        std::string segname = itr->first;
         // TODO: Load segment from file.
         
         std::vector<std::string> log_list = get_log_files(segname);
