@@ -487,8 +487,6 @@ void rvm_commit_trans(trans_t tid) {
 
 /*
   undo all changes that have happened within the specified transaction.
-  
-  TODO: Implement
  */
 void rvm_abort_trans(trans_t tid) {
     printf("Abort started\n");
