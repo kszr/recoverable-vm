@@ -421,7 +421,7 @@ void rvm_commit_trans(trans_t tid) {
             // the same offset as that specified by the first undo log.
             rl.offset = ul->offset;
             rl.segbase = ul->segbase;
-            if(j<seg->ul_vector.size()-1) {
+            if(j < seg->ul_vector.size()-1) {
                 rl.data = seg->ul_vector[j]->data;
             } else {
                 char *data = new char[ul->size+1];
@@ -457,7 +457,7 @@ void rvm_commit_trans(trans_t tid) {
             std::cout << std::endl;
             
             // Garbage collection. ul->data will be deleted later for other j.
-            if(j>=seg->ul_vector.size()-1)
+            if(j >= seg->ul_vector.size()-1)
                 delete rl.data;
         }
     }
