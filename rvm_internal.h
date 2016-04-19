@@ -8,6 +8,7 @@ struct undo_log_t {
 	// const char* segname;
     char *segbase;
     char *data;
+    size_t size;
     int offset;
 };
 
