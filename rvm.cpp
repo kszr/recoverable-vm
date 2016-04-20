@@ -100,7 +100,6 @@ static void restore_segs_from_disk(rvm_s *rvm) {
     for(auto &file : seg_files) {
         std::string segname = get_base_name(file, "seg");
         segment_t *seg = new segment_t;
-        printf("Here\n");
         seg->segbase = read_from_file(rvm->dirpath + file, &seg->size);
         seg->ismapped = 0;
         seg->dirpath = rvm->dirpath;
@@ -164,6 +163,41 @@ static void delete_log_files(std::string dirpath, std::string segname) {
             std::string buf = "rm " + dirpath + f;
             system(buf.c_str());
         }
+    }
+}
+
+/**
+ * Creates a redo log.
+ */
+static void make_redo_log(segment_t *seg) {
+    // Create a redo log containing the last changes, if any, before they potentially
+    // get overwritten.
+    if(seg->ul_vector.size() > 0) {
+        undo_log_t *last_ul = seg->ul_vector[seg->ul_vector.size()-1];
+        
+        if(last_ul->redone)
+            return;
+        
+        last_ul->redone = 0;
+        
+        redo_log_t *rl = new redo_log_t;
+        rl->offset = last_ul->offset;
+        rl->size = last_ul->size;
+        rl->data = new char[rl->size+1];
+
+        char *ptr1 = rl->data;
+        char *ptr2 = seg->segbase + rl->offset; 
+        for(int i=0; i<rl->size; i++)
+            *(ptr1++) = *(ptr2++);
+        
+        rl->data[rl->size] = '\0';
+        
+        std::cout << "Redo log data : ";
+        for(int i=0; i<rl->size; i++)
+            std::cout << rl->data[i];
+        std::cout << std::endl;
+        
+        seg->rl_vector.push_back(rl);
     }
 }
 
@@ -342,7 +376,7 @@ trans_t rvm_begin_trans(rvm_t rvm, int numsegs, void **segbases) {
 */
 void rvm_about_to_modify(trans_t tid, void *segbase, int offset, int size) {
     printf("About to Modify started with segbase %lu\n", (long) segbase);
-
+    
     std::vector<segment_t*> *segtracker = (std::vector<segment_t*> *) tid;
     segment_t *seg = NULL;
 
@@ -367,9 +401,13 @@ void rvm_about_to_modify(trans_t tid, void *segbase, int offset, int size) {
         return;
     }
     
+    // Make a redo log just in case!
+    make_redo_log(seg);
+            
     undo_log_t *ul = new undo_log_t;
     ul->segbase = (char *) segbase;
     ul->offset = offset;
+    ul->redone = 0;
 
     printf("Segment Data in About to Modify %s\n", (char*)(segbase));
 
@@ -410,55 +448,32 @@ void rvm_commit_trans(trans_t tid) {
     for(size_t i=0; i<(*segtracker).size(); i++) {
         segment_t *seg = (*segtracker)[i];
         
-        for(size_t j=0; j<seg->ul_vector.size(); j++) {
-            undo_log_t *ul = seg->ul_vector[j];
-            
-            redo_log_t rl;
-            
-            // Redo logs are the same as undo logs, except that their data are off by one -
-            // i.e., the first undo log will store the data of the original segment,
-            // but the first redo log will store what the second undo log stores at
-            // the same offset as that specified by the first undo log.
-            rl.offset = ul->offset;
-            rl.segbase = ul->segbase;
-            if(j < seg->ul_vector.size()-1) {
-                rl.data = seg->ul_vector[j]->data;
-            } else {
-                char *data = new char[ul->size+1];
-
-                char *ptr1 = data;
-                char *ptr2 = ul->data;
-                for(int k=0; k<ul->size; k++)
-                    *(ptr1++) = *(ptr2++);
-                data[ul->size] = '\0';
-                
-                rl.data = data;
-            }
+        make_redo_log(seg);
+        
+        std::cout << "rl_vector size " << seg->rl_vector.size() << std::endl;
+        for(int j=seg->rl_vector.size()-1; j>=0; j--) {
+            redo_log_t *rl = seg->rl_vector[j];
             
             // Write the redo log to a file.
             int num = get_unique_file_num(seg->dirpath, seg->segname, "log");
             std::string filename = seg->dirpath + seg->segname + "_" + std::to_string(num) + ".log";
             
             std::ofstream outputFile(filename);
-            outputFile << rl.offset << std::endl;
-            outputFile << ul->size << std::endl;
+            outputFile << rl->offset << std::endl;
+            outputFile << rl->size << std::endl;
             
             // Writing data character by character.
-            for(int k=0; k<ul->size; k++)
-                outputFile << rl.data[k];
+            for(int k=0; k<rl->size; k++)
+                outputFile << rl->data[k];
              
             outputFile.close();
             std::cout << "Wrote " << filename << std::endl;
 
             // === Printing data ===
             std::cout << "Data contained in redo log = ";
-            for(int k=0; k<ul->size; k++)
-                std::cout << rl.data[k];
+            for(int k=0; k<rl->size; k++)
+                std::cout << rl->data[k];
             std::cout << std::endl;
-            
-            // Garbage collection. ul->data will be deleted later for other j.
-            if(j >= seg->ul_vector.size()-1)
-                delete rl.data;
         }
     }
     

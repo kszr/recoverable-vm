@@ -9,12 +9,14 @@ struct undo_log_t {
     char *segbase;
     char *data;
     size_t size;
+    int redone;
     int offset;
 };
 
 struct redo_log_t {
     char *segbase;
     char *data;
+    size_t size;
     int offset;
 };
 
