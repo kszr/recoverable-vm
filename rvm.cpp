@@ -167,7 +167,7 @@ static void delete_log_files(std::string dirpath, std::string segname) {
 }
 
 /**
- * Creates a redo log.
+ * Creates a redo log for the given segment.
  */
 static void make_redo_log(segment_t *seg) {
     // Create a redo log containing the last changes, if any, before they potentially
@@ -262,12 +262,11 @@ void *rvm_map(rvm_t rvm, const char *segname, int size_to_create) {
         segtemp->rl_vector = std::vector<redo_log_t*>();
         rvm->seg_map[segtemp->segname] = segtemp;
 
-        // Writes the contents of the segment to disk.
+        // Initializes the segment to null at each byte.
         std::string filename = rvm->dirpath + std::string(segname) + ".seg";
         std::ofstream outputFile(filename);
         char *ptr = segtemp->segbase;
         for(int i=0; i<segtemp->size; i++) {
-            // outputFile << *(ptr++);
             outputFile << '\0';
             segtemp->segbase[i] = '\0';
         }
@@ -279,7 +278,6 @@ void *rvm_map(rvm_t rvm, const char *segname, int size_to_create) {
     }
 
     printf("Printing Segnames\n");
-
     for(itr = rvm->seg_map.begin();itr != rvm->seg_map.end(); ++itr) {
         std::cout << "\t[" << itr->first << "]\n";
     }
@@ -478,12 +476,12 @@ void rvm_commit_trans(trans_t tid) {
     }
     
     // Set segments to not busy.
-    for(size_t i=0; i<sizeof(segtracker)/sizeof(segment_t*); i++) {
+    for(size_t i=0; i<(*segtracker).size(); i++) {
         (*segtracker)[i]->busy = 0;
     }
     
     // Get rid of undo logs.
-    for(size_t i=0; i<sizeof(segtracker)/sizeof(segment_t*); i++) {
+    for(size_t i=0; i<(*segtracker).size(); i++) {
         for(size_t j=0; j<(*segtracker)[i]->ul_vector.size(); j++) {
             undo_log_t *ul = (*segtracker)[i]->ul_vector[j];
             if(ul) {
@@ -494,7 +492,7 @@ void rvm_commit_trans(trans_t tid) {
         }
         (*segtracker)[i]->ul_vector.clear();
     }
-    
+    segtracker->clear();
     delete segtracker;
     
     printf("Commit Completed\n");
