@@ -55,11 +55,11 @@ static std::vector<std::string> get_file_list(std::string dirpath, std::string e
 /**
  * Returns all log files corresponding to a given segment.
  */
-static std::vector<std::string> get_log_files(std::string segname) {
+static std::vector<std::string> get_log_files(std::string dirpath, std::string segname) {
     std::vector<std::pair<int, std::string> > vec;
-    for(auto &f : get_file_list("./", "log")) {
-        if(f.find(segname) == 0) {
-            int i = std::stoi(f.substr(segname.length(), f.length() - segname.length() - 4));
+    for(auto &f : get_file_list(dirpath, "log")) {
+        if(f.find(segname) == 0 && f[segname.length()] == '_') {
+            int i = std::stoi(f.substr(segname.length()+1, f.length() - segname.length() - 5));
             vec.push_back(std::pair<int, std::string>(i, f));
         }
     }
@@ -93,20 +93,28 @@ static std::string get_base_name(std::string filename, std::string ext) {
 /**
  * Reads any .seg files that may be on disk and reconstructs segments.
  */
-static void restore_segs_from_disk(rvm_s *rvm) {
+static void restore_segs_from_disk(rvm_s *rvm) {    
     printf("Restoring segments from disk\n");
     
     std::vector<std::string> seg_files = get_file_list(rvm->dirpath, "seg");
     for(auto &file : seg_files) {
         std::string segname = get_base_name(file, "seg");
         segment_t *seg = new segment_t;
-        seg->segbase = read_from_file(rvm->dirpath + file, &seg->size);
         seg->ismapped = 0;
         seg->dirpath = rvm->dirpath;
         seg->segname = segname;
         seg->ul_vector = std::vector<undo_log_t*>();
         seg->rl_vector = std::vector<redo_log_t*>();
-        rvm->seg_map[seg->segname.c_str()] = seg;
+        rvm->seg_map[seg->segname.c_str()] = seg; 
+    }
+    
+    // Truncate logs.
+    rvm_truncate_log(rvm);
+    
+    for(auto &file : seg_files) {
+        std::string segname = get_base_name(file, "seg");
+        segment_t *seg = rvm->seg_map[segname];
+        seg->segbase = read_from_file(rvm->dirpath + file, &seg->size);
     }
     
     printf("Done restoring segments from disk\n");
@@ -237,7 +245,7 @@ rvm_t rvm_init(const char *directory) {
   is shorter than size_to_create, then extend it until it is long enough.
   It is an error to try to map the same segment twice.
 */
-void *rvm_map(rvm_t rvm, const char *segname, int size_to_create) {
+void *rvm_map(rvm_t rvm, const char *segname, int size_to_create) {    
     //compare segname with segnames data structure
     printf("Begin map\n");
 
@@ -519,6 +527,7 @@ void rvm_abort_trans(trans_t tid) {
             delete ul->data;
             delete ul;
         }
+        seg->busy = 0;
     }
 
     delete segtracker;
@@ -537,13 +546,50 @@ void rvm_truncate_log(rvm_t rvm) {
     for(itr = rvm->seg_map.begin();itr != rvm->seg_map.end(); ++itr) {
         std::string segname = itr->first;
         // TODO: Load segment from file.
+        std::string filename = rvm->dirpath + segname + ".seg";
+        
+        size_t seg_size;
+        char *data = read_from_file(filename, &seg_size);
 
-        std::vector<std::string> log_list = get_log_files(segname);
+        std::vector<std::string> log_list = get_log_files(rvm->dirpath, segname);
+
         for(auto &lg : log_list) {
             // TODO: Apply log files to the segment.
+            size_t k;
+            char *log_data = read_from_file(rvm->dirpath + lg, &k);
+            char *p = strchr(log_data, '\n');
+            
+            std::string s = "";
+            char *q = log_data;
+            while(q < p)
+                s += *(q++);
+            
+            int offset = std::stoi(s);
+            
+            p = strchr(p+1, '\n');
+            
+            q++;
+            
+            s = "";
+            
+            while(q < p)
+                s += *(q++);
+            
+            int size = std::stoi(s);
+            
+            k -= p-log_data;
+            
+            p++;
+            
+            for(int i=0; i<k; i++)
+                (data+offset)[i] = p[i];           
         }
 
-        // TODO: Write updated segment back into file.
+        // Write updated segment back to file.
+        std::ofstream outputFile(filename);
+        for(int i=0; i<seg_size; i++)
+            outputFile << data[i];
+        outputFile.close();
 
         // Delete log files
         delete_log_files(rvm->dirpath, segname);
