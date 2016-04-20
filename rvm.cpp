@@ -94,7 +94,7 @@ static std::string get_base_name(std::string filename, std::string ext) {
  * Reads any .seg files that may be on disk and reconstructs segments.
  */
 static void restore_segs_from_disk(rvm_s *rvm) {    
-    printf("Restoring segments from disk\n");
+    printf("INFO: Restoring segments from disk\n");
     
     std::vector<std::string> seg_files = get_file_list(rvm->dirpath, "seg");
     for(auto &file : seg_files) {
@@ -117,7 +117,7 @@ static void restore_segs_from_disk(rvm_s *rvm) {
         seg->segbase = read_from_file(rvm->dirpath + file, &seg->size);
     }
     
-    printf("Done restoring segments from disk\n");
+    printf("INFO: Done restoring segments from disk\n");
 }
 
 /*
@@ -129,9 +129,9 @@ static segment_t *get_segment(rvm_t rvm, void *segbase) {
     segment_t *segtemp = NULL;
     itr = rvm->seg_map.begin();
     while(itr != rvm->seg_map.end()) {
-        found = ((long) itr-> second->segbase == (long) segbase);
+        found = ((long) itr->second->segbase == (long) segbase);
         if(found) {
-            segtemp = itr-> second;
+            segtemp = itr->second;
             break;
         }
         itr++;
@@ -200,11 +200,6 @@ static void make_redo_log(segment_t *seg) {
         
         rl->data[rl->size] = '\0';
         
-        std::cout << "Redo log data : ";
-        for(int i=0; i<rl->size; i++)
-            std::cout << rl->data[i];
-        std::cout << std::endl;
-        
         seg->rl_vector.push_back(rl);
     }
 }
@@ -218,7 +213,7 @@ static void make_redo_log(segment_t *seg) {
 rvm_t rvm_init(const char *directory) {
     // TODO: Figure out a way to detect multiple calls to rvm_init() from the same process.
     
-    printf("Init started\n");
+    printf("INFO: Init started\n");
 
     rvm_s *rvm = new rvm_s;
     rvm->seg_map = std::map<std::string, segment_t*>();
@@ -247,7 +242,7 @@ rvm_t rvm_init(const char *directory) {
 */
 void *rvm_map(rvm_t rvm, const char *segname, int size_to_create) {    
     //compare segname with segnames data structure
-    printf("Begin map\n");
+    printf("INFO: Begin map\n");
 
     std::map<std::string, segment_t*>::iterator itr;
     itr = rvm->seg_map.find(std::string(segname));
@@ -258,7 +253,7 @@ void *rvm_map(rvm_t rvm, const char *segname, int size_to_create) {
         itr->second->ul_vector = std::vector<undo_log_t*>();
         itr->second->rl_vector = std::vector<redo_log_t*>();
 
-        printf("Segment already present\n");
+        printf("INFO: Segment already present\n");
     } else {
         segment_t *segtemp = new segment_t;
         segtemp->segbase = (char *) malloc(size_to_create*sizeof(char)+1);
@@ -282,12 +277,7 @@ void *rvm_map(rvm_t rvm, const char *segname, int size_to_create) {
         segtemp->segbase[size_to_create] = '\0';
         outputFile.close();
         
-        printf("New Segment created\n");
-    }
-
-    printf("Printing Segnames\n");
-    for(itr = rvm->seg_map.begin();itr != rvm->seg_map.end(); ++itr) {
-        std::cout << "\t[" << itr->first << "]\n";
+        printf("INFO: New Segment created\n");
     }
 
     return (void *) rvm->seg_map[segname]->segbase;
@@ -302,15 +292,13 @@ void rvm_unmap(rvm_t rvm, void *segbase) {
         segtemp->ismapped = 0;
     }
 
-    printf("Unmap Completed\n");
+    printf("INFO: Unmap Completed\n");
 }
 
 /*
   destroy a segment completely, erasing its backing store. This function should not be called on a segment that is currently mapped.
  */
 void rvm_destroy(rvm_t rvm, const char *segname) {
-    printf("Destroy started\n");
-
     if(rvm->seg_map.count(segname) == 0)
         return;
 
@@ -336,8 +324,6 @@ void rvm_destroy(rvm_t rvm, const char *segname) {
     }
     
     delete_log_files(rvm->dirpath, segname);
-
-    printf("Destroy Completed\n");
 }
 
 /*
@@ -353,7 +339,7 @@ trans_t rvm_begin_trans(rvm_t rvm, int numsegs, void **segbases) {
     for(int i=0; i<numsegs; i++) {
         segment_t *segtemp = get_segment(rvm, segbases[i]);
         if  (segtemp == NULL || segtemp->busy == 1) {
-            printf("Begin Transaction Failed to Complete\n");
+            printf("ERROR: Begin Transaction Failed to Complete\n");
             return -1;
         }           
     }
@@ -369,7 +355,7 @@ trans_t rvm_begin_trans(rvm_t rvm, int numsegs, void **segbases) {
         segtemp->busy = 1;
     }
         
-    printf("Begin Transaction Completed\n");
+    printf("INFO: Begin Transaction Completed\n");
 
     return (trans_t) segtracker;
 }
@@ -381,8 +367,6 @@ trans_t rvm_begin_trans(rvm_t rvm, int numsegs, void **segbases) {
   It is legal call rvm_about_to_modify multiple times on the same memory area.
 */
 void rvm_about_to_modify(trans_t tid, void *segbase, int offset, int size) {
-    printf("About to Modify started with segbase %lu\n", (long) segbase);
-    
     std::vector<segment_t*> *segtracker = (std::vector<segment_t*> *) tid;
     segment_t *seg = NULL;
 
@@ -398,25 +382,23 @@ void rvm_about_to_modify(trans_t tid, void *segbase, int offset, int size) {
     }
     
     if(!found) {
-        printf("Segment not found!\n");
+        printf("ERROR: Segment not found!\n");
         return;
     }
     
     if(offset+size >= seg->size) {
-        printf("Transaction would exceed segment bounds!\n");
+        printf("ERROR: Transaction would exceed segment bounds!\n");
         return;
     }
     
-    // Make a redo log just in case!
+    // Make a redo log here in case the user decides to make multiple
+    // changes within a transaction before committing it.
     make_redo_log(seg);
             
     undo_log_t *ul = new undo_log_t;
     ul->segbase = (char *) segbase;
     ul->offset = offset;
     ul->redone = 0;
-
-    printf("Segment Data in About to Modify %s\n", (char*)(segbase));
-
     ul->data = new char[size+1];
     ul->size = size;
     
@@ -427,15 +409,9 @@ void rvm_about_to_modify(trans_t tid, void *segbase, int offset, int size) {
         *(ptr1++) = *(ptr2++);
     ul->data[size] = '\0';
 
-    // === Printing data ===
-    std::cout << "Undo log data for segment " << seg->segname << " at offset " << offset << std::endl;
-    for(int i=0; i<size; i++)
-        std::cout << ul->data[i];
-    std::cout << std::endl;
-
     seg->ul_vector.push_back(ul);
 
-    printf("About to Modify Completed\n");
+    printf("INFO: About to Modify Completed\n");
 }
 
 /*
@@ -445,18 +421,18 @@ to disk so that, even if the program crashes,
 the changes will be seen by the program when it restarts.
 */
 void rvm_commit_trans(trans_t tid) {
-    printf("Begin commit\n");
+    printf("INFO: Begin commit\n");
     
     std::vector<segment_t*> *segtracker = (std::vector<segment_t*> *) tid;
-    
-    // Infer redo log contents from undo log.
-    // The first undo log contains the original contents of the file, so skip over it.
+
+    // Write redo logs to disk.
     for(size_t i=0; i<(*segtracker).size(); i++) {
         segment_t *seg = (*segtracker)[i];
         
+        // Create a redo log for this transaction.
         make_redo_log(seg);
         
-        std::cout << "rl_vector size " << seg->rl_vector.size() << std::endl;
+        // Write redo logs to disk.
         for(int j=seg->rl_vector.size()-1; j>=0; j--) {
             redo_log_t *rl = seg->rl_vector[j];
             
@@ -473,13 +449,7 @@ void rvm_commit_trans(trans_t tid) {
                 outputFile << rl->data[k];
              
             outputFile.close();
-            std::cout << "Wrote " << filename << std::endl;
-
-            // === Printing data ===
-            std::cout << "Data contained in redo log = ";
-            for(int k=0; k<rl->size; k++)
-                std::cout << rl->data[k];
-            std::cout << std::endl;
+            std::cout << "INFO: Wrote " << filename << std::endl;
         }
     }
     
@@ -500,17 +470,31 @@ void rvm_commit_trans(trans_t tid) {
         }
         (*segtracker)[i]->ul_vector.clear();
     }
+    
+    // Get rid of redo logs.
+    for(size_t i=0; i<(*segtracker).size(); i++) {
+        for(size_t j=0; j<(*segtracker)[i]->rl_vector.size(); j++) {
+            redo_log_t *rl = (*segtracker)[i]->rl_vector[j];
+            if(rl) {
+                if(rl->data)
+                    delete rl->data;
+                delete rl;
+            }
+        }
+        (*segtracker)[i]->rl_vector.clear();
+    }
+    
     segtracker->clear();
     delete segtracker;
     
-    printf("Commit Completed\n");
+    printf("INFO: Commit complete\n");
 }
 
 /*
   undo all changes that have happened within the specified transaction.
  */
 void rvm_abort_trans(trans_t tid) {
-    printf("Abort started\n");
+    printf("INFO: Abort started\n");
     
     std::vector<segment_t*> *segtracker = (std::vector<segment_t*> *) tid;
 
@@ -523,16 +507,39 @@ void rvm_abort_trans(trans_t tid) {
             
             for(int j=0; j<ul->size; j++)
                 *(ptr1++) = *(ptr2++); 
-                
-            delete ul->data;
-            delete ul;
         }
         seg->busy = 0;
+    }
+    
+    // Get rid of undo logs.
+    for(size_t i=0; i<(*segtracker).size(); i++) {
+        for(size_t j=0; j<(*segtracker)[i]->ul_vector.size(); j++) {
+            undo_log_t *ul = (*segtracker)[i]->ul_vector[j];
+            if(ul) {
+                if(ul->data)
+                    delete ul->data;
+                delete ul;
+            }
+        }
+        (*segtracker)[i]->ul_vector.clear();
+    }
+    
+    // Get rid of redo logs.
+    for(size_t i=0; i<(*segtracker).size(); i++) {
+        for(size_t j=0; j<(*segtracker)[i]->rl_vector.size(); j++) {
+            redo_log_t *rl = (*segtracker)[i]->rl_vector[j];
+            if(rl) {
+                if(rl->data)
+                    delete rl->data;
+                delete rl;
+            }
+        }
+        (*segtracker)[i]->ul_vector.clear();
     }
 
     delete segtracker;
 
-    printf("Abort Completed\n");
+    printf("INFO: Abort complete\n");
 }
 
 /*
@@ -541,11 +548,11 @@ void rvm_abort_trans(trans_t tid) {
  TODO: Implement
 */
 void rvm_truncate_log(rvm_t rvm) {
-    printf("Truncating\n");
+    printf("INFO: Truncating\n");
     std::map<std::string, segment_t*>::iterator itr;
     for(itr = rvm->seg_map.begin();itr != rvm->seg_map.end(); ++itr) {
         std::string segname = itr->first;
-        // TODO: Load segment from file.
+        // Load segment from file.
         std::string filename = rvm->dirpath + segname + ".seg";
         
         size_t seg_size;
@@ -554,7 +561,7 @@ void rvm_truncate_log(rvm_t rvm) {
         std::vector<std::string> log_list = get_log_files(rvm->dirpath, segname);
 
         for(auto &lg : log_list) {
-            // TODO: Apply log files to the segment.
+            // Apply log files to the segment.
             size_t k;
             char *log_data = read_from_file(rvm->dirpath + lg, &k);
             char *p = strchr(log_data, '\n');
@@ -579,6 +586,11 @@ void rvm_truncate_log(rvm_t rvm) {
             
             k -= p-log_data;
             
+            if(k != size) {
+                std::cerr << "ERROR: Log may have been corrupted!" << std::endl;
+                exit(1);
+            }
+            
             p++;
             
             for(int i=0; i<k; i++)
@@ -594,4 +606,6 @@ void rvm_truncate_log(rvm_t rvm) {
         // Delete log files
         delete_log_files(rvm->dirpath, segname);
     }
+    
+    printf("INFO: Truncate complete\n");
 }
