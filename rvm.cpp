@@ -181,26 +181,31 @@ static void make_redo_log(segment_t *seg) {
     // Create a redo log containing the last changes, if any, before they potentially
     // get overwritten.
     if(seg->ul_vector.size() > 0) {
-        undo_log_t *last_ul = seg->ul_vector[seg->ul_vector.size()-1];
-        
-        if(last_ul->redone)
-            return;
-        
-        last_ul->redone = 0;
-        
-        redo_log_t *rl = new redo_log_t;
-        rl->offset = last_ul->offset;
-        rl->size = last_ul->size;
-        rl->data = new char[rl->size+1];
+        // Cycle through the undo log vector and create redo logs for all undo logs
+        // that have not been processed yet. Note that in case of overlap a redo log
+        // may not reflect the actual modification that took place, but the important
+        // thing is that the redo logs combine to produce the state of the segment at the
+        // end of the transaction, which is by definition atomic.
+        for(auto &ul : seg->ul_vector) {
+            if(ul->redone)
+                continue;
+            
+            ul->redone = 0;
+            
+            redo_log_t *rl = new redo_log_t;
+            rl->offset = ul->offset;
+            rl->size = ul->size;
+            rl->data = new char[rl->size+1];
 
-        char *ptr1 = rl->data;
-        char *ptr2 = seg->segbase + rl->offset; 
-        for(int i=0; i<rl->size; i++)
-            *(ptr1++) = *(ptr2++);
-        
-        rl->data[rl->size] = '\0';
-        
-        seg->rl_vector.push_back(rl);
+            char *ptr1 = rl->data;
+            char *ptr2 = seg->segbase + rl->offset; 
+            for(int i=0; i<rl->size; i++)
+                *(ptr1++) = *(ptr2++);
+            
+            rl->data[rl->size] = '\0';
+            
+            seg->rl_vector.push_back(rl);
+        }
     }
 }
 
@@ -390,10 +395,6 @@ void rvm_about_to_modify(trans_t tid, void *segbase, int offset, int size) {
         printf("ERROR: Transaction would exceed segment bounds!\n");
         return;
     }
-    
-    // Make a redo log here in case the user decides to make multiple
-    // changes within a transaction before committing it.
-    make_redo_log(seg);
             
     undo_log_t *ul = new undo_log_t;
     ul->segbase = (char *) segbase;
@@ -429,7 +430,7 @@ void rvm_commit_trans(trans_t tid) {
     for(size_t i=0; i<(*segtracker).size(); i++) {
         segment_t *seg = (*segtracker)[i];
         
-        // Create a redo log for this transaction.
+        // Create a redo log for all modifications in this transaction.
         make_redo_log(seg);
         
         // Write redo logs to disk.
