@@ -16,3 +16,4 @@ test_deception
 out_of_order
 test_post_facto
 map_unmap
+truncate_threshold

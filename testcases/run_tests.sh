@@ -17,6 +17,8 @@ echo "Compiling test_post_facto.c";
 g++ -std=c++11 test_post_facto.c ../rvm.cpp -o test_post_facto;
 echo "Compiling map_unmap.c";
 g++ -std=c++11 map_unmap.c ../rvm.cpp -o map_unmap;
+echo "Compiling truncate_threshold.cpp";
+g++ -std=c++11 truncate_threshold.cpp ../rvm.cpp -o truncate_threshold;
 echo ""
 
 # Run all tests
@@ -53,3 +55,6 @@ echo "";
 echo "======= Running map_unmap.c =======";
 echo "";
 ./map_unmap
+echo "======= Running truncate_threshold.cpp =======";
+echo "";
+./truncate_threshold

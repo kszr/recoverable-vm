@@ -105,6 +105,7 @@ static void restore_segs_from_disk(rvm_s *rvm) {
         seg->segname = segname;
         seg->ul_vector = std::vector<undo_log_t*>();
         seg->rl_vector = std::vector<redo_log_t*>();
+        seg->rvm = rvm;
         rvm->seg_map[seg->segname.c_str()] = seg; 
     }
     
@@ -223,6 +224,7 @@ rvm_t rvm_init(const char *directory) {
     rvm_s *rvm = new rvm_s;
     rvm->seg_map = std::map<std::string, segment_t*>();
     rvm->dirpath = directory;
+    rvm->num_commits = 0;
 
     if(sizeof(directory)/sizeof(char) < 1)
         rvm->dirpath = "./";
@@ -254,8 +256,13 @@ void *rvm_map(rvm_t rvm, const char *segname, int size_to_create) {
     if (itr != rvm->seg_map.end()) {
         // return NULL if the segment is already mapped.
         if(itr->second->ismapped) {
-            std::cout << "Error: Trying to map a segment that is already mapped!" << std::endl;
+            std::cerr << "ERROR: Trying to map a segment that is already mapped!" << std::endl;
             return NULL;
+        }
+        
+        if(rvm != itr->second->rvm) {
+            std::cerr << "ERROR: rvm object of segment does not match argument!" << std::endl;
+            exit(1);
         }
             
         itr->second->segbase = (char*) realloc ((char*) itr->second->segbase, size_to_create*sizeof(char)+1);
@@ -273,6 +280,7 @@ void *rvm_map(rvm_t rvm, const char *segname, int size_to_create) {
         segtemp->dirpath = rvm->dirpath;
         segtemp->ul_vector = std::vector<undo_log_t*>();
         segtemp->rl_vector = std::vector<redo_log_t*>();
+        segtemp->rvm = rvm;
         rvm->seg_map[segtemp->segname] = segtemp;
 
         // Initializes the segment to null at each byte.
@@ -344,9 +352,6 @@ void rvm_destroy(rvm_t rvm, const char *segname) {
  */
 trans_t rvm_begin_trans(rvm_t rvm, int numsegs, void **segbases) {    
     std::map<std::string, segment_t*>::iterator itr;
-        
-    // Truncate logs.
-    rvm_truncate_log(rvm);
 
     // Initial check to see if any of the segments is being modified.
     for(int i=0; i<numsegs; i++) {
@@ -433,6 +438,9 @@ void rvm_commit_trans(trans_t tid) {
     printf("INFO: Begin commit\n");
     
     std::vector<segment_t*> *segtracker = (std::vector<segment_t*> *) tid;
+    
+    bool must_truncate = false;
+    rvm_t rvm = (*segtracker).size() > 0 ? (*segtracker)[0]->rvm : NULL;
 
     // Write redo logs to disk.
     for(size_t i=0; i<(*segtracker).size(); i++) {
@@ -442,7 +450,7 @@ void rvm_commit_trans(trans_t tid) {
         make_redo_logs(seg);
         
         // Write redo logs to disk.
-        for(int j=seg->rl_vector.size()-1; j>=0; j--) {
+        for(int j=seg->rl_vector.size()-1; j>=0; j--) {            
             redo_log_t *rl = seg->rl_vector[j];
             
             // Write the redo log to a file.
@@ -458,6 +466,15 @@ void rvm_commit_trans(trans_t tid) {
                 outputFile << rl->data[k];
              
             outputFile.close();
+            
+            // A hacky way of checking whether logs need to be truncated in this call to commit.
+            if(!must_truncate) {
+                rvm->num_commits++;
+                
+                if(rvm->num_commits >= TRUNCATE_THRESHOLD)
+                    must_truncate = true;
+            }
+            
             std::cout << "INFO: Wrote " << filename << std::endl;
         }
     }
@@ -467,7 +484,7 @@ void rvm_commit_trans(trans_t tid) {
         (*segtracker)[i]->busy = 0;
     }
     
-    // Get rid of undo logs.
+    // Get rid of undo logs from memory.
     for(size_t i=0; i<(*segtracker).size(); i++) {
         for(size_t j=0; j<(*segtracker)[i]->ul_vector.size(); j++) {
             undo_log_t *ul = (*segtracker)[i]->ul_vector[j];
@@ -480,7 +497,7 @@ void rvm_commit_trans(trans_t tid) {
         (*segtracker)[i]->ul_vector.clear();
     }
     
-    // Get rid of redo logs.
+    // Get rid of redo logs from memory.
     for(size_t i=0; i<(*segtracker).size(); i++) {
         for(size_t j=0; j<(*segtracker)[i]->rl_vector.size(); j++) {
             redo_log_t *rl = (*segtracker)[i]->rl_vector[j];
@@ -497,6 +514,12 @@ void rvm_commit_trans(trans_t tid) {
     delete segtracker;
     
     printf("INFO: Commit complete\n");
+    
+    // Truncate if the number of redo logs on disk has reached the threshold.
+    if(rvm && must_truncate) {
+        std::cout << "INFO: Log threshold reached. Truncating logs." << std::endl; 
+        rvm_truncate_log(rvm);
+    }
 }
 
 /*
