@@ -471,8 +471,10 @@ void rvm_commit_trans(trans_t tid) {
             if(!must_truncate) {
                 rvm->num_commits++;
                 
-                if(rvm->num_commits >= TRUNCATE_THRESHOLD)
+                if(rvm->num_commits >= TRUNCATE_THRESHOLD) {
                     must_truncate = true;
+                    rvm->num_commits = 0; // Reset to 0 so that it doesn't reach this program point too soon.
+                }
             }
             
             std::cout << "INFO: Wrote " << filename << std::endl;
