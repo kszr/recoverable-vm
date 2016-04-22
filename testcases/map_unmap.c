@@ -27,11 +27,11 @@ int main(int argc, char **argv)
      
      void *good_seg = rvm_map(rvm, "testseg", 10000);
      
-     if(bad_seg != NULL) {
+     if((long) bad_seg != -1) {
 	  printf("ERROR: Did not catch double map error\n");
 	  exit(2);
      }
-     if(good_seg == NULL) {
+     if((long) good_seg == -1) {
 	  printf("ERROR: Failed to map after unmap\n");
 	  exit(2);
      }

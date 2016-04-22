@@ -254,10 +254,10 @@ void *rvm_map(rvm_t rvm, const char *segname, int size_to_create) {
     std::map<std::string, segment_t*>::iterator itr;
     itr = rvm->seg_map.find(std::string(segname));
     if (itr != rvm->seg_map.end()) {
-        // return NULL if the segment is already mapped.
+        // Throw an error if the segment is already mapped.
         if(itr->second->ismapped) {
             std::cerr << "ERROR: Trying to map a segment that is already mapped!" << std::endl;
-            return NULL;
+            return (void *) -1;
         }
         
         if(rvm != itr->second->rvm) {
