@@ -15,6 +15,8 @@ echo "Compiling out_of_order.c";
 g++ -std=c++11 out_of_order.c ../rvm.cpp -o out_of_order;
 echo "Compiling test_post_facto.c";
 g++ -std=c++11 test_post_facto.c ../rvm.cpp -o test_post_facto;
+echo "Compiling map_unmap.c";
+g++ -std=c++11 map_unmap.c ../rvm.cpp -o map_unmap;
 echo ""
 
 # Run all tests
@@ -48,3 +50,6 @@ echo "";
 echo "======= Running test_post_facto.c =======";
 echo "";
 ./test_post_facto
+echo "======= Running map_unmap.c =======";
+echo "";
+./map_unmap

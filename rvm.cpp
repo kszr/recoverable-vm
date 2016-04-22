@@ -252,12 +252,17 @@ void *rvm_map(rvm_t rvm, const char *segname, int size_to_create) {
     std::map<std::string, segment_t*>::iterator itr;
     itr = rvm->seg_map.find(std::string(segname));
     if (itr != rvm->seg_map.end()) {
+        // return NULL if the segment is already mapped.
+        if(itr->second->ismapped) {
+            std::cout << "Error: Trying to map a segment that is already mapped!" << std::endl;
+            return NULL;
+        }
+            
         itr->second->segbase = (char*) realloc ((char*) itr->second->segbase, size_to_create*sizeof(char)+1);
         itr->second->size = size_to_create;
         itr->second->ismapped = 1;
         itr->second->ul_vector = std::vector<undo_log_t*>();
         itr->second->rl_vector = std::vector<redo_log_t*>();
-
         printf("INFO: Segment already present\n");
     } else {
         segment_t *segtemp = new segment_t;
