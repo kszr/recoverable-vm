@@ -7,3 +7,11 @@
 *.h.gch
 *.seg
 *.log
+basic
+abort
+multi
+multi-abort
+truncate
+test_deception
+out_of_order
+test_post_facto

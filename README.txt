@@ -12,7 +12,9 @@ UNDO LOG
 * Undo logs are not backed up on disk, but are instead kept in a queue data structure.
 * An undo log is created by storing a snapshot of the region that the user wishes to modify within each segment specified in a call to rvm_about_to_modify().
 * We don't check to see whether the user has actually made any changes between calls to rvm_about_to_modify() within a given transaction, but simply create undo logs for each call.
-* We also don't check to see whether the user has changed any other region of a segment than that declared in a call to rvm_about_to_modify(). This does not pose a problem for us, since any such deceptive act on the part of the user will not get logged in a redo log and will not be written to disk by the very nature of our logging mechanism.
+* We also don't check to see whether the user has changed any other region of a segment than that declared in a call to rvm_about_to_modify(). This does not pose a problem for us for two reasons:
+    1. If deceptive changes were made to an undeclared region of a segment, then the change will simply not get logged in a redo log when the transaction is committed, since redo logs are only concerned with regions that were declared in calls to about_to_modify.
+    2. We assume that declared regions in successive calls to about_to_modify() within a transaction accumulate. In other words, once a user calls about_to_modify() on a given region, there is no limit to the number of modifications he or she may make to that region.
 
 REDO LOG
 

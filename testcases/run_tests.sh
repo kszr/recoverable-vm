@@ -13,6 +13,8 @@ echo "Compiling test_deception.c";
 g++ -std=c++11 test_deception.c ../rvm.cpp -o test_deception;
 echo "Compiling out_of_order.c";
 g++ -std=c++11 out_of_order.c ../rvm.cpp -o out_of_order;
+echo "Compiling test_post_facto.c";
+g++ -std=c++11 test_post_facto.c ../rvm.cpp -o test_post_facto;
 echo ""
 
 # Run all tests
@@ -43,3 +45,6 @@ echo "";
 echo "======= Running out_of_order.c =======";
 echo "";
 ./out_of_order;
+echo "======= Running test_post_facto.c =======";
+echo "";
+./test_post_facto

@@ -177,7 +177,7 @@ static void delete_log_files(std::string dirpath, std::string segname) {
 /**
  * Creates a redo log for the given segment.
  */
-static void make_redo_log(segment_t *seg) {
+static void make_redo_logs(segment_t *seg) {
     // Create a redo log containing the last changes, if any, before they potentially
     // get overwritten.
     if(seg->ul_vector.size() > 0) {
@@ -430,8 +430,8 @@ void rvm_commit_trans(trans_t tid) {
     for(size_t i=0; i<(*segtracker).size(); i++) {
         segment_t *seg = (*segtracker)[i];
         
-        // Create a redo log for all modifications in this transaction.
-        make_redo_log(seg);
+        // Create a redo log for all modifications made to this segment in this transaction.
+        make_redo_logs(seg);
         
         // Write redo logs to disk.
         for(int j=seg->rl_vector.size()-1; j>=0; j--) {

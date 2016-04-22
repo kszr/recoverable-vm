@@ -1,5 +1,12 @@
-/* test_deception.c - test that changes that violate contract in rvm_about_to_modify() don't 
-   get recorded */
+/*
+The following transaction is legal:
+
+--------YYYYYYY--------
+---XXX------X----------
+
+where only the first set of X's was declared in about_to_modify(), since the previous
+call to about_to_modify() still holds.
+ */
 
 #include "../rvm.h"
 #include <unistd.h>
@@ -27,9 +34,9 @@ void proc1()
      
      trans = rvm_begin_trans(rvm, 1, (void **) segs);
      
-    //  rvm_about_to_modify(trans, segs[0], 0, 100);
-    //  sprintf(segs[0], TEST_STRING);
-    //  printf("Segment Data %s\n", segs[0]);
+     rvm_about_to_modify(trans, segs[0], 0, 100);
+     sprintf(segs[0], TEST_STRING);
+     printf("Segment Data %s\n", segs[0]);
      rvm_about_to_modify(trans, segs[0], OFFSET2, 100);
      sprintf(segs[0]+OFFSET2, TEST_STRING);
      sprintf(segs[0], BAD_STRING);
@@ -50,12 +57,12 @@ void proc2()
      rvm = rvm_init("rvm_segments");
 
      segs[0] = (char *) rvm_map(rvm, "testseg", 10000);
-     if(!strcmp(segs[0], BAD_STRING)) {
-	  printf("ERROR: illegal change got recorded in segment 1: %s\n", segs[0]);
+     if(strcmp(segs[0], BAD_STRING)) {
+	  printf("ERROR: post facto change was not recorded: %s\n", segs[0]);
 	  exit(2);
      }
      if(strcmp(segs[0]+OFFSET2, TEST_STRING)) {
-	  printf("ERROR: hello not present in segment 2\n");
+	  printf("ERROR: second hello not present\n");
 	  exit(2);
      }
 
