@@ -6,6 +6,7 @@ BASIC INFORMATION
 LOGS
 
 * We use two types of logs: undo logs and redo logs.
+* We follow a twofold truncation strategy: We truncate existing logs whenever begin transaction is called and whenever a new rvm object is created based on a given directory. This ensures that the segments on the disk are only updated lazily after a transaction has been committed and also that the data in the backing file of a given segment is up to date whenever another process decides to create an rvm object based on the same directory.
 
 UNDO LOG
 

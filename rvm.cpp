@@ -344,6 +344,9 @@ void rvm_destroy(rvm_t rvm, const char *segname) {
  */
 trans_t rvm_begin_trans(rvm_t rvm, int numsegs, void **segbases) {    
     std::map<std::string, segment_t*>::iterator itr;
+        
+    // Truncate logs.
+    rvm_truncate_log(rvm);
 
     // Initial check to see if any of the segments is being modified.
     for(int i=0; i<numsegs; i++) {
