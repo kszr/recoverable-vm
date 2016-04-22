@@ -7,8 +7,8 @@ LOGS
 
 * We use two types of logs: undo logs and redo logs.
 * We follow a twofold truncation strategy:
-    (i) We truncate existing logs whenever a new rvm object is created based on a given directory. This ensures that the segments on the disk are only updated lazily after a transaction has been committed (see (ii) for exception) and also that the data in the backing file of a given segment is up to date whenever another process decides to create an rvm object based on the same directory.
-    (ii) We also truncate in rvm_commit_transaction() whenever the number of log files have reached or crossed a certain threshold (set to 10 for the time being in rvm_internal.h). This ensures that segments are updated on the disk at intervals when a process executes a large number of transactions and reduces latency incurred in (i) when a new process tries to access the data on the segment in the future.
+    (i) We truncate existing logs whenever a new rvm object is created based on a given directory. This ensures that the segments on the disk are only updated lazily after a transaction has been committed (see (ii) for exception) and also that the data in the backing file of a given segment is up to date whenever another process decides to create an rvm object based on the same directory. We rely for the accuracy and freshness of segment data on the fact that our recoverable virtual memory system does not need to concern itself with concurrency, and that it is the user's responsibility to program defensively and only run processes that access the same rvm directory in sequential order.
+    (ii) We also truncate in rvm_commit_transaction() whenever the number of log files has reached or crossed a certain threshold (set to 10 for the time being in rvm_internal.h). This ensures that segments are updated on the disk at intervals when a process executes a large number of transactions and reduces latency incurred in (i) when a new process tries to access the data on the segment in the future.
 
 UNDO LOG
 
