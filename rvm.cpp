@@ -604,9 +604,12 @@ void rvm_truncate_log(rvm_t rvm) {
         // Load segment from file.
         std::string filename = rvm->dirpath + segname + ".seg";
 
-        int seg_size;
-        char *data = read_from_file(filename, &seg_size);
-
+        int seg_size;char *data;
+        try {
+            data = read_from_file(filename, &seg_size);
+        } catch (const std::bad_alloc& e) {
+            std::cerr << "That is " << seg_size << std::endl;
+        }
         std::vector<std::string> log_list = get_log_files(rvm->dirpath, segname);
 
         for(auto &lg : log_list) {
@@ -645,11 +648,12 @@ void rvm_truncate_log(rvm_t rvm) {
             for(int i=0; i<k; i++)
                 (data+offset)[i] = p[i];           
         }
-std::cout << "Here..." << std::endl;
+        
         // Write updated segment back to file.
         std::ofstream outputFile(filename);
-        for(int i=0; i<seg_size-1; i++)
+        for(int i=0; i<seg_size; i++)
             outputFile << data[i];
+        outputFile << '\0';
         outputFile.close();
 
         // Delete log files
