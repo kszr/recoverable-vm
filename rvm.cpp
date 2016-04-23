@@ -16,7 +16,7 @@
 /**
  * Reads from the file specified by filepath and returns its contents as a string.
  */ 
-static char *read_from_file(std::string filepath, size_t *segsize) {
+static char *read_from_file(std::string filepath, int *segsize) {
     std::ifstream t;
     int length;
     t.open(filepath);                   // open input file
@@ -62,7 +62,7 @@ static std::vector<std::string> get_log_files(std::string dirpath, std::string s
             int i = std::stoi(f.substr(segname.length()+1, f.length() - segname.length() - 5));
             vec.push_back(std::pair<int, std::string>(i, f));
         }
-    }
+    } 
     
     // Make sure log files are sorted by increasing number. Have to do this to avoid
     // sorting numbers alphabetically.
@@ -96,7 +96,7 @@ static std::string get_base_name(std::string filename, std::string ext) {
 static void restore_segs_from_disk(rvm_s *rvm) {    
     printf("INFO: Restoring segments from disk\n");
     
-    std::vector<std::string> seg_files = get_file_list(rvm->dirpath, "seg");
+    std::vector<std::string> seg_files = get_file_list(rvm->dirpath, "seg"); 
     for(auto &file : seg_files) {
         std::string segname = get_base_name(file, "seg");
         segment_t *seg = new segment_t;
@@ -270,7 +270,7 @@ void *rvm_map(rvm_t rvm, const char *segname, int size_to_create) {
         itr->second->ismapped = 1;
         itr->second->ul_vector = std::vector<undo_log_t*>();
         itr->second->rl_vector = std::vector<redo_log_t*>();
-        printf("INFO: Segment already present\n");
+        printf("INFO: Segment already present: %s\n", segname);
     } else {
         segment_t *segtemp = new segment_t;
         segtemp->segbase = (char *) malloc(size_to_create*sizeof(char)+1);
@@ -295,7 +295,7 @@ void *rvm_map(rvm_t rvm, const char *segname, int size_to_create) {
         segtemp->segbase[size_to_create] = '\0';
         outputFile.close();
         
-        printf("INFO: New Segment created\n");
+        printf("INFO: New Segment created: %s\n", segname);
     }
 
     return (void *) rvm->seg_map[segname]->segbase;
@@ -445,7 +445,7 @@ void rvm_commit_trans(trans_t tid) {
     }
     
     bool must_truncate = false;
-    rvm_t rvm = (*segtracker).size() > 0 ? (*segtracker)[0]->rvm : NULL;
+    rvm_t rvm = (*segtracker)[0]->rvm;
 
     // Write redo logs to disk.
     for(size_t i=0; i<(*segtracker).size(); i++) {
@@ -603,15 +603,15 @@ void rvm_truncate_log(rvm_t rvm) {
         std::string segname = itr->first;
         // Load segment from file.
         std::string filename = rvm->dirpath + segname + ".seg";
-        
-        size_t seg_size;
+
+        int seg_size;
         char *data = read_from_file(filename, &seg_size);
 
         std::vector<std::string> log_list = get_log_files(rvm->dirpath, segname);
 
         for(auto &lg : log_list) {
             // Apply log files to the segment.
-            size_t k;
+            int k;
             char *log_data = read_from_file(rvm->dirpath + lg, &k);
             char *p = strchr(log_data, '\n');
             
@@ -645,10 +645,10 @@ void rvm_truncate_log(rvm_t rvm) {
             for(int i=0; i<k; i++)
                 (data+offset)[i] = p[i];           
         }
-
+std::cout << "Here..." << std::endl;
         // Write updated segment back to file.
         std::ofstream outputFile(filename);
-        for(int i=0; i<seg_size; i++)
+        for(int i=0; i<seg_size-1; i++)
             outputFile << data[i];
         outputFile.close();
 

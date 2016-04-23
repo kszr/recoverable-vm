@@ -28,7 +28,7 @@ typedef rvm_s* rvm_t;
 struct segment_t {
     std::string segname;
     std::string dirpath;
-    size_t size;
+    int size;
     char* segbase;
     int ismapped;
     int busy;
