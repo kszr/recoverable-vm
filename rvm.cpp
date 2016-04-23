@@ -404,7 +404,7 @@ void rvm_about_to_modify(trans_t tid, void *segbase, int offset, int size) {
         return;
     }
     
-    if(offset+size >= seg->size) {
+    if(offset+size > seg->size) {
         printf("ERROR: Transaction would exceed segment bounds!\n");
         return;
     }
