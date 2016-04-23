@@ -356,7 +356,7 @@ trans_t rvm_begin_trans(rvm_t rvm, int numsegs, void **segbases) {
     // Initial check to see if any of the segments is being modified.
     for(int i=0; i<numsegs; i++) {
         segment_t *segtemp = get_segment(rvm, segbases[i]);
-        if  (segtemp == NULL || segtemp->busy == 1) {
+        if(segtemp == NULL || segtemp->busy == 1) {
             printf("ERROR: Begin Transaction Failed to Complete\n");
             return (trans_t) -1;
         }           
