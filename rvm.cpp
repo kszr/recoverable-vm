@@ -358,7 +358,7 @@ trans_t rvm_begin_trans(rvm_t rvm, int numsegs, void **segbases) {
         segment_t *segtemp = get_segment(rvm, segbases[i]);
         if  (segtemp == NULL || segtemp->busy == 1) {
             printf("ERROR: Begin Transaction Failed to Complete\n");
-            return -1;
+            return (trans_t) -1;
         }           
     }
     
@@ -439,6 +439,11 @@ void rvm_commit_trans(trans_t tid) {
     
     std::vector<segment_t*> *segtracker = (std::vector<segment_t*> *) tid;
     
+    if(segtracker->size() == 0) {
+        std::cerr << "ERROR: Invalid call to rvm_commit_trans()." << std::endl;
+        return;
+    }
+    
     bool must_truncate = false;
     rvm_t rvm = (*segtracker).size() > 0 ? (*segtracker)[0]->rvm : NULL;
 
@@ -513,7 +518,8 @@ void rvm_commit_trans(trans_t tid) {
     }
     
     segtracker->clear();
-    delete segtracker;
+    // delete segtracker;
+    // tid = NULL;
     
     printf("INFO: Commit complete\n");
     
@@ -531,6 +537,11 @@ void rvm_abort_trans(trans_t tid) {
     printf("INFO: Abort started\n");
     
     std::vector<segment_t*> *segtracker = (std::vector<segment_t*> *) tid;
+    
+    if(segtracker->size() == 0) {
+        std::cerr << "ERROR: Invalid call to rvm_abort_trans()." << std::endl;
+        return;
+    }
 
     for(auto &seg : *segtracker) {
         // Copy data from undo logs in the reverse of the order in which they were created.
@@ -570,8 +581,12 @@ void rvm_abort_trans(trans_t tid) {
         }
         (*segtracker)[i]->ul_vector.clear();
     }
+    
+    segtracker->clear();
 
-    delete segtracker;
+    // delete segtracker;
+    
+    // tid = NULL;
 
     printf("INFO: Abort complete\n");
 }

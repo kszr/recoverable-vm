@@ -17,3 +17,4 @@ out_of_order
 test_post_facto
 map_unmap
 truncate_threshold
+multiple_commit_abort

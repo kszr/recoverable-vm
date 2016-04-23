@@ -4,7 +4,7 @@
 
 #define TRUNCATE_THRESHOLD 10  // System should truncate logs after this many commits.
 
-typedef long trans_t; // This is so we can disguise addresses as trans_t.
+typedef void* trans_t; // This is so we can disguise addresses as trans_t.
 
 struct undo_log_t {
 	// const char* segname;
